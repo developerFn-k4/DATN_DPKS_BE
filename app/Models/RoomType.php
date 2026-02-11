@@ -7,15 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 class RoomType extends Model
 {
     protected $fillable = [
+        'hotel_id',
         'name',
         'description',
+        'capacity',
+        'bed_type',
         'base_price',
-        'max_guests'
+        'currency',
+        'status',
     ];
 
 
-    public function rooms()
+    public function hotel()
     {
-        return $this->hasMany(Room::class);
+       return $this->belongsTo(Hotel::class);
     }
 }
