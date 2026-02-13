@@ -18,8 +18,6 @@ return new class extends Migration
             $table->integer('floor');
             $table->enum('status', [
                 'available',
-                'booked',
-                'occupied',
                 'maintenance'
             ])->default('available');
             $table->timestamps();
