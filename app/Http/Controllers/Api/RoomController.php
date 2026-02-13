@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
@@ -8,66 +8,74 @@ use Illuminate\Http\Request;
 
 class RoomController extends Controller
 {
-    public function index(Request $request)
-{
-$query = Room::with('roomType');
+   
+    public function index()
+    {
+        $rooms = Room::with('roomType')->latest()->get();
 
+        return response()->json([
+            'success' => true,
+            'data' => $rooms
+        ]);
+    }
 
-if ($request->filled('status')) {
-$query->where('status', $request->status);
-}
+    
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'room_type_id' => 'required|exists:room_types,id',
+            'room_number' => 'required|string|max:50|unique:rooms,room_number',
+            'floor' => 'required|string|max:50',
+            'status' => 'required|in:available,maintenance',
+        ]);
 
+        $room = Room::create($data);
 
-if ($request->filled('room_type_id')) {
-$query->where('room_type_id', $request->room_type_id);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Room created successfully',
+            'data' => $room
+        ], 201);
+    }
 
+    
+    public function show(Room $room)
+    {
+        $room->load('roomType');
 
-return $query->paginate(10);
-}
+        return response()->json([
+            'success' => true,
+            'data' => $room
+        ]);
+    }
 
+    
+    public function update(Request $request, Room $room)
+    {
+        $data = $request->validate([
+            'room_type_id' => 'sometimes|required|exists:room_types,id',
+            'room_number' => 'sometimes|required|string|max:50|unique:rooms,room_number,' . $room->id,
+            'floor' => 'sometimes|required|string|max:50',
+            'status' => 'sometimes|required|in:available,maintenance',
+        ]);
 
-public function store(Request $request)
-{
-$data = $request->validate([
-'room_number' => 'required|unique:rooms',
-'room_type_id' => 'required|exists:room_types,id',
-'floor' => 'required|integer',
-'status' => 'in:available,booked,occupied,maintenance'
-]);
+        $room->update($data);
 
+        return response()->json([
+            'success' => true,
+            'message' => 'Room updated successfully',
+            'data' => $room
+        ]);
+    }
 
-return Room::create($data);
-}
+    
+    public function destroy(Room $room)
+    {
+        $room->delete();
 
-
-public function show(Room $room)
-{
-return $room->load('roomType');
-}
-
-
-public function update(Request $request, Room $room)
-{
-$room->update($request->only([
-'room_number','room_type_id','floor','status'
-]));
-
-
-return $room;
-}
-
-
-public function destroy(Room $room)
-{
-if ($room->status !== 'available') {
-return response()->json([
-'message' => 'Chỉ được xóa phòng đang trống'
-], 422);
-}
-
-
-$room->delete();
-return response()->noContent();
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Room deleted successfully'
+        ]);
+    }
 }
