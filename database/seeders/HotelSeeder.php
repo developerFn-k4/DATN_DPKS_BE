@@ -1,15 +1,33 @@
 <?php
 
+<<<<<<< HEAD
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Hotel;
+=======
 
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+>>>>>>> main
 
 class HotelSeeder extends Seeder
 {
     public function run(): void
     {
+<<<<<<< HEAD
+        Hotel::create([
+            'name' => 'VietStay Hotel',
+            'address' => '123 Trần Duy Hưng, Hà Nội, Việt Nam',
+            'phone' => '0901234567',
+            'email' => 'contact@vietstay.vn',
+            'description' => 'VietStay là khách sạn hiện đại, tiện nghi, nằm ngay trung tâm thành phố.',
+            'check_in_time' => '14:00:00',
+            'check_out_time' => '12:00:00',
+            'status' => 'active',
+=======
         DB::table('hotels')->insert([
             [
                 'name' => 'Sunrise Hotel',
@@ -71,6 +89,7 @@ class HotelSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+>>>>>>> main
         ]);
     }
 }
