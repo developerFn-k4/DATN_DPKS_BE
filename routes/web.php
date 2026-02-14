@@ -1,11 +1,53 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminRoomImageController;
+use App\Http\Controllers\Admin\AdminRoomTypeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+
+// Route::prefix('admin')->group(function () {
+//     //route CRUD loại phòng
+//     Route::get('room-types', [AdminRoomTypeController::class, 'index']);
+//     Route::get('room-types/{id}', [AdminRoomTypeController::class, 'show']);
+//     Route::post('room-types', [AdminRoomTypeController::class, 'store']);
+//     Route::put('room-types/{id}', [AdminRoomTypeController::class, 'update']);
+//     Route::delete('room-types/{id}', [AdminRoomTypeController::class, 'destroy']);
+//     //route crud ảnh
+//     Route::post(
+//         'room-types/{id}/images',
+//         [AdminRoomImageController::class, 'store']
+//     );
+
+//     Route::delete(
+//         'room-images/{id}',
+//         [AdminRoomImageController::class, 'destroy']
+//     );
+
+//     Route::post(
+//         'room-images/{id}',
+//         [AdminRoomImageController::class, 'update']
+//     );
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -17,4 +59,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
