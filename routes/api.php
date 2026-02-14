@@ -1,5 +1,6 @@
 <?php
 
+
 use App\Http\Controllers\Admin\AdminRoomImageController;
 use App\Http\Controllers\Admin\AdminRoomTypeController;
 use Illuminate\Http\Request;
