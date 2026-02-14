@@ -4,7 +4,9 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
+
     "content-hash": "b4f4c97625256e6e26c90aaf5f872e1a",
+
     "packages": [
         {
             "name": "brick/math",
@@ -1335,6 +1337,7 @@
         },
         {
             "name": "laravel/sanctum",
+
             "version": "v4.3.1",
             "source": {
                 "type": "git",
@@ -1345,10 +1348,12 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/laravel/sanctum/zipball/e3b85d6e36ad00e5db2d1dcc27c81ffdf15cbf76",
                 "reference": "e3b85d6e36ad00e5db2d1dcc27c81ffdf15cbf76",
+
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
+
                 "illuminate/console": "^11.0|^12.0|^13.0",
                 "illuminate/contracts": "^11.0|^12.0|^13.0",
                 "illuminate/database": "^11.0|^12.0|^13.0",
@@ -1394,7 +1399,9 @@
                 "issues": "https://github.com/laravel/sanctum/issues",
                 "source": "https://github.com/laravel/sanctum"
             },
+
             "time": "2026-02-07T17:19:31+00:00"
+
         },
         {
             "name": "laravel/serializable-closure",
