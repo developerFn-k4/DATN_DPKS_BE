@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminRoomImageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Admin\AdminRoomTypeController;
-use App\Http\Controllers\Admin\AdminRoomImageController;
+use App\Http\Controllers\Api\RoomImageController;
+
+use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\RoomController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,7 +28,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-
+Route::get(
+    '/room-types/{roomType}/images',
+    [RoomImageController::class, 'index']
+);
 /*
 |--------------------------------------------------------------------------
 | USER API (PHẢI LOGIN - auth:sanctum)
@@ -89,12 +96,25 @@ Route::middleware(['auth:sanctum', 'admin'])
         | CRUD ROOM IMAGES (ẢNH PHÒNG)
         |----------------------------------
         */
-        // Thêm ảnh cho loại phòng
-        Route::post('/room-types/{id}/images', [AdminRoomImageController::class, 'store']);
+        Route::post(
+            '/room-types/{roomType}/images',
+            [RoomImageController::class, 'store']
+        );
 
-        // Cập nhật ảnh phòng
-        Route::post('/room-images/{id}', [AdminRoomImageController::class, 'update']);
+        Route::post(
+            '/room-images/{roomImage}',
+            [RoomImageController::class, 'update']
+        );
 
-        // Xoá ảnh phòng
-        Route::delete('/room-images/{id}', [AdminRoomImageController::class, 'destroy']);
+        Route::delete(
+            '/room-images/{roomImage}',
+            [RoomImageController::class, 'destroy']
+        );
+        /*
+        |----------------------------------
+        | CRUD ROOM (ẢNH PHÒNG)
+        |----------------------------------
+        */
+
+        Route::apiResource('rooms', RoomController::class);
     });
