@@ -3,24 +3,39 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Room extends Model
 {
-    protected $fillable = [
-        'room_type_id',
-        'room_number',
-        'floor',
+    use SoftDeletes;
 
+    protected $fillable = [
+        'room_number',
+        'room_type_id',
+        'floor',
         'status',
+        'note'
     ];
 
-    // phòng thuộc về 1 loại phòng
-    public function roomType(): BelongsTo
+    protected $casts = [
+        'floor' => 'integer',
+    ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | RELATIONSHIPS
+    |--------------------------------------------------------------------------
+    */
+
+    // Một phòng thuộc về một loại phòng
+    public function roomType()
     {
         return $this->belongsTo(RoomType::class);
+    }
+
+    // Một phòng có nhiều booking
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
     }
 }

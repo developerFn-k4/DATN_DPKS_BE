@@ -21,6 +21,11 @@ class RoomType extends Model
         'status',
     ];
 
+    protected $casts = [
+        'capacity' => 'integer',
+        'base_price' => 'decimal:2',
+    ];
+
 
     // loại phòng thuộc về 1 khách sạn
     public function hotel(): BelongsTo
@@ -38,6 +43,5 @@ class RoomType extends Model
     public function images(): HasMany
     {
         return $this->hasMany(RoomImage::class);
-
     }
 }

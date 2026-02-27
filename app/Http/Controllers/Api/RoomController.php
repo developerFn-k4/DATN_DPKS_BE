@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Api;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class RoomController extends Controller
 {
-   
+
     public function index()
     {
         $rooms = Room::with('roomType')->latest()->get();
@@ -19,13 +19,13 @@ class RoomController extends Controller
         ]);
     }
 
-    
+
     public function store(Request $request)
     {
         $data = $request->validate([
             'room_type_id' => 'required|exists:room_types,id',
             'room_number' => 'required|string|max:50|unique:rooms,room_number',
-            'floor' => 'required|string|max:50',
+            'floor' => 'required|integer|max:50',
             'status' => 'required|in:available,maintenance',
         ]);
 
@@ -38,7 +38,7 @@ class RoomController extends Controller
         ], 201);
     }
 
-    
+
     public function show(Room $room)
     {
         $room->load('roomType');
@@ -49,14 +49,14 @@ class RoomController extends Controller
         ]);
     }
 
-    
+
     public function update(Request $request, Room $room)
     {
         $data = $request->validate([
             'room_type_id' => 'sometimes|required|exists:room_types,id',
             'room_number' => 'sometimes|required|string|max:50|unique:rooms,room_number,' . $room->id,
             'floor' => 'sometimes|required|string|max:50',
-            'status' => 'sometimes|required|in:available,maintenance',
+            'status' => 'sometimes|required|in:available,maintenance,cleaning,inactive',
         ]);
 
         $room->update($data);
@@ -68,14 +68,14 @@ class RoomController extends Controller
         ]);
     }
 
-    
+
     public function destroy(Room $room)
     {
         $room->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Room deleted successfully'
+            'message' => 'Xóa phòng thành công'
         ]);
     }
 }
