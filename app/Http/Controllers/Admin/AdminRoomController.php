@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Models\RImage;
 use Illuminate\Http\Request;
 
-class RoomController extends Controller
+class AdminRoomController extends Controller
 {
-
     public function index()
     {
         $rooms = Room::with('roomType')->latest()->get();

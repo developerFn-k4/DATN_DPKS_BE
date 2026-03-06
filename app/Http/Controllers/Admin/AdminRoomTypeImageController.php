@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RoomImage;
@@ -8,7 +8,7 @@ use App\Models\RoomType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
-class RoomImageController extends Controller
+class AdminRoomTypeImageController extends Controller
 {
     // 1. Lấy danh sách ảnh theo loại phòng (PUBLIC)
     public function index(RoomType $roomType)
