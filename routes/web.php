@@ -45,7 +45,9 @@ Route::get('/', function () {
 
 
 
-
+Route::get('/test-image', function () {
+    return response()->file(storage_path('app/public/avatars/xxUPPFbN8rkoyjyW68qYl3FcmtUuev3kKDbEcKtF.png'));
+});
 
 
 

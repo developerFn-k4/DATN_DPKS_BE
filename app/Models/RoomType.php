@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -17,6 +18,13 @@ class RoomType extends Model
         'bed_type',
         'base_price'
     ];
+
+    protected $casts = [
+        'capacity' => 'integer',
+        'base_price' => 'decimal:2',
+    ];
+
+
     // loại phòng thuộc về 1 khách sạn
     public function hotel(): BelongsTo
     {
