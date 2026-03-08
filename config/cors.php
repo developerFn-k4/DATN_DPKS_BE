@@ -15,20 +15,28 @@ return [
     |
     */
 
-    'paths' => ['*'],
+    // 'paths' => ['*'],
 
+    // 'allowed_methods' => ['*'],
+
+    // 'allowed_origins' => ['*'],
+
+    // 'allowed_origins_patterns' => [],
+
+    // 'allowed_headers' => ['*'],
+
+    // 'exposed_headers' => [],
+
+    // 'max_age' => 0,
+
+    // 'supports_credentials' => false,
+
+    'paths' => ['api/*'],
     'allowed_methods' => ['*'],
-
-    'allowed_origins' => ['*'],
-
-    'allowed_origins_patterns' => [],
-
+    'allowed_origins' => ['*'], // hoặc chỉ định domain front-end 
     'allowed_headers' => ['*'],
-
     'exposed_headers' => [],
-
     'max_age' => 0,
-
     'supports_credentials' => false,
 
 ];
