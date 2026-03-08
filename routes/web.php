@@ -4,6 +4,9 @@ use App\Http\Controllers\Admin\AdminRoomImageController;
 use App\Http\Controllers\Admin\AdminRoomTypeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\RoomTypeController;
+
+Route::resource('room_types', RoomTypeController::class);
 
 Route::get('/', function () {
     return view('welcome');
