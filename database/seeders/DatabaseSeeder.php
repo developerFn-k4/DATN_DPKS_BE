@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RoomTypeSeeder::class,
             RoomSeeder::class,
             RoomImageSeeder::class,
+            UserSeeder::class,
         ]);
     }
 }
