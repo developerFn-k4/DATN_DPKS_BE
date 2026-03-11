@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminRoomTypeController;
 use App\Http\Controllers\Admin\AdminRoomController;
 use App\Http\Controllers\Admin\AdminRoomTypeImageController;
 use App\Http\Controllers\Admin\AdminRImageController;
+use App\Http\Controllers\Admin\AdminBookingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,4 +52,17 @@ Route::middleware(['auth:sanctum', 'admin'])
         */
 
         Route::apiResource('rooms', AdminRoomController::class);
+
+        /*
+        | Booking
+        */
+
+        // xem toàn bộ booking
+        Route::get('/bookings', [AdminBookingController::class, 'index']);
+
+        // xác nhận booking
+        Route::put('/bookings/{id}/confirm', [AdminBookingController::class, 'confirm']);
+
+        // check out (hoàn thành booking)
+        Route::put('/bookings/{id}/complete', [AdminBookingController::class, 'complete']);
     });
