@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\UserRoomTypeController;
 use App\Http\Controllers\Api\UserRoomImageController;
 use App\Http\Controllers\Api\UserRoomController;
 use App\Http\Controllers\Admin\AdminRImageController;
+use App\Http\Controllers\Api\UserBookingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,16 +15,6 @@ use App\Http\Controllers\Admin\AdminRImageController;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('rooms')->group(function () {
-
-    // Danh sách phòng
-    Route::get('/', [UserRoomController::class, 'index']);
-
-    // Chi tiết phòng
-    Route::get('/{room}', [UserRoomController::class, 'show']);
-
-    Route::get('/{room}/images', [AdminRImageController::class, 'index']);
-});
 Route::prefix('rooms')->group(function () {
 
     // Danh sách loại phòng
@@ -34,6 +25,14 @@ Route::prefix('rooms')->group(function () {
 
     // Ảnh của loại phòng
     Route::get('/room-types/{roomType}/images', [UserRoomImageController::class, 'index']);
+
+    // Danh sách phòng
+    Route::get('/', [UserRoomController::class, 'index']);
+
+    // Chi tiết phòng
+    Route::get('/{room}', [UserRoomController::class, 'show']);
+
+    Route::get('/{room}/images', [AdminRImageController::class, 'index']);
 });
 
 
@@ -69,4 +68,23 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
 
     Route::post('/logout', [AuthController::class, 'logout']);
+});
+
+/*
+    |--------------------------------------------------------------------------
+    | USER Đặt Phòng
+    |--------------------------------------------------------------------------
+    */
+Route::get('/available-rooms', [UserBookingController::class, 'availableRooms']);
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // đặt phòng
+    Route::post('/bookings', [UserBookingController::class, 'store']);
+
+    // danh sách booking của user
+    Route::get('/my-bookings', [UserBookingController::class, 'myBookings']);
+
+    // hủy booking
+    Route::put('/bookings/{id}/cancel', [UserBookingController::class, 'cancel']);
 });
