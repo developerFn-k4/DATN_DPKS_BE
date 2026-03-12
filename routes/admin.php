@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminRoomController;
 use App\Http\Controllers\Admin\AdminRoomTypeImageController;
 use App\Http\Controllers\Admin\AdminRImageController;
 use App\Http\Controllers\Admin\AdminBookingController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,6 +18,10 @@ Route::middleware(['auth:sanctum', 'admin'])
     ->prefix('admin')
     ->group(function () {
 
+        /*
+        | DASHBOARD
+        */
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         /*
         | ROOM TYPES
         */
