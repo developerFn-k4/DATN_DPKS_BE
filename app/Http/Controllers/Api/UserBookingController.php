@@ -45,7 +45,6 @@ class UserBookingController extends Controller
      */
     public function store(Request $request)
     {
-
         if (!Auth::check()) {
             return response()->json([
                 'message' => 'Unauthorized'
@@ -54,6 +53,9 @@ class UserBookingController extends Controller
 
         $data = $request->validate([
             'room_id' => 'required|exists:rooms,id',
+            'name' => 'required|string|max:100',
+            'email' => 'required|email|max:100',
+            'phone' => 'required|string|max:20',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
             'guests' => 'required|integer|min:1'
@@ -62,13 +64,14 @@ class UserBookingController extends Controller
             'guests.min' => 'Số lượng khách phải lớn hơn 0'
         ]);
 
-
-
         DB::beginTransaction();
 
         try {
 
-            $room = Room::with('roomType')->lockForUpdate()->find($data['room_id']);
+            /**
+             * Khóa phòng để tránh race condition
+             */
+            $room = Room::lockForUpdate()->find($data['room_id']);
 
             if (!$room) {
                 return response()->json([
@@ -76,7 +79,17 @@ class UserBookingController extends Controller
                 ], 404);
             }
 
+            /**
+             * Kiểm tra trạng thái phòng
+             */
+            if ($room->status !== 'available') {
 
+                DB::rollBack();
+
+                return response()->json([
+                    'message' => 'Phòng hiện không khả dụng'
+                ], 422);
+            }
 
             /**
              * Kiểm tra trùng lịch
@@ -85,15 +98,11 @@ class UserBookingController extends Controller
                 ->whereIn('status', ['pending', 'confirmed'])
                 ->where(function ($query) use ($data) {
 
-                    $query->where(function ($q) use ($data) {
-
-                        $q->where('check_in', '<', $data['check_out'])
-                            ->where('check_out', '>', $data['check_in']);
-                    });
+                    $query->where('check_in', '<', $data['check_out'])
+                        ->where('check_out', '>', $data['check_in']);
                 })
                 ->lockForUpdate()
                 ->exists();
-
 
             if ($conflict) {
 
@@ -104,28 +113,37 @@ class UserBookingController extends Controller
                 ], 409);
             }
 
-
-
             /**
              * Tính số ngày
              */
-            $days = Carbon::parse($data['check_in'])
-                ->diffInDays(Carbon::parse($data['check_out']));
+            $checkIn = Carbon::parse($data['check_in']);
+            $checkOut = Carbon::parse($data['check_out']);
 
+            $days = $checkIn->diffInDays($checkOut);
 
+            if ($days <= 0) {
+                $days = 1;
+            }
 
             /**
-             * Tính giá
+             * Giá phòng
              */
-            $price = $room->roomType->base_price;
+            $price = (float) $room->price;
 
-            $totalPrice = $days * $price;
+            /**
+             * Tổng tiền
+             */
+            $totalPrice = $price * $days;
 
-
-
+            /**
+             * Tạo booking
+             */
             $booking = Booking::create([
                 'room_id' => $data['room_id'],
                 'user_id' => Auth::id(),
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
                 'check_in' => $data['check_in'],
                 'check_out' => $data['check_out'],
                 'guests' => $data['guests'],
@@ -133,20 +151,30 @@ class UserBookingController extends Controller
                 'status' => 'pending'
             ]);
 
-
             DB::commit();
-
 
             return response()->json([
                 'message' => 'Đặt phòng thành công',
-                'data' => $booking
+
+                'data' => $booking,
+
+                'room_info' => [
+                    'room_id' => $room->id,
+                    'room_number' => $room->room_number
+                ],
+
+                'price_per_day' => $price,
+                'days' => $days,
+                'total_price' => $totalPrice
+
             ], 201);
         } catch (\Exception $e) {
 
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Có lỗi xảy ra'
+                'message' => 'Có lỗi xảy ra',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -264,33 +292,6 @@ class UserBookingController extends Controller
             ->with(['room', 'room.roomType'])
             ->latest()
             ->paginate(10);
-
-
-        return response()->json($bookings);
-    }
-
-
-
-    /**
-     * Admin xem tất cả booking
-     */
-    public function index(Request $request)
-    {
-
-        $query = Booking::with(['room', 'room.roomType', 'user'])
-            ->latest();
-
-
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->date) {
-            $query->whereDate('check_in', $request->date);
-        }
-
-
-        $bookings = $query->paginate(15);
 
 
         return response()->json($bookings);
