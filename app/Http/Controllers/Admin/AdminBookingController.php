@@ -25,7 +25,16 @@ class AdminBookingController extends Controller
 
         $rooms = Room::whereDoesntHave('bookings', function ($query) use ($data) {
 
-            $query->whereIn('status', ['pending', 'confirmed'])
+            // ✅ SỬA: không tính pending đã hết hạn
+            $query->where(function ($q) {
+
+                $q->where('status', 'confirmed')
+                    ->orWhere(function ($sub) {
+
+                        $sub->where('status', 'pending')
+                            ->where('expired_at', '>', now());
+                    });
+            })
                 ->where(function ($q) use ($data) {
 
                     $q->where('check_in', '<', $data['check_out'])
@@ -62,8 +71,6 @@ class AdminBookingController extends Controller
             'guests.min' => 'Số lượng khách phải lớn hơn 0'
         ]);
 
-
-
         DB::beginTransaction();
 
         try {
@@ -76,24 +83,26 @@ class AdminBookingController extends Controller
                 ], 404);
             }
 
-
-
             /**
-             * Kiểm tra trùng lịch
+             * ✅ SỬA: Kiểm tra trùng lịch (không tính pending đã hết hạn)
              */
             $conflict = Booking::where('room_id', $data['room_id'])
-                ->whereIn('status', ['pending', 'confirmed'])
+                ->where(function ($q) {
+
+                    $q->where('status', 'confirmed')
+                        ->orWhere(function ($sub) {
+
+                            $sub->where('status', 'pending')
+                                ->where('expired_at', '>', now());
+                        });
+                })
                 ->where(function ($query) use ($data) {
 
-                    $query->where(function ($q) use ($data) {
-
-                        $q->where('check_in', '<', $data['check_out'])
-                            ->where('check_out', '>', $data['check_in']);
-                    });
+                    $query->where('check_in', '<', $data['check_out'])
+                        ->where('check_out', '>', $data['check_in']);
                 })
                 ->lockForUpdate()
                 ->exists();
-
 
             if ($conflict) {
 
@@ -104,24 +113,17 @@ class AdminBookingController extends Controller
                 ], 409);
             }
 
-
-
             /**
              * Tính số ngày
              */
             $days = Carbon::parse($data['check_in'])
                 ->diffInDays(Carbon::parse($data['check_out']));
 
-
-
             /**
              * Tính giá
              */
             $price = $room->roomType->base_price;
-
             $totalPrice = $days * $price;
-
-
 
             $booking = Booking::create([
                 'room_id' => $data['room_id'],
@@ -130,15 +132,16 @@ class AdminBookingController extends Controller
                 'check_out' => $data['check_out'],
                 'guests' => $data['guests'],
                 'total_price' => $totalPrice,
-                'status' => 'pending'
-            ]);
+                'status' => 'pending',
 
+                // ✅ THÊM MỚI: thời gian giữ phòng 5 phút
+                'expired_at' => now()->addMinutes(5)
+            ]);
 
             DB::commit();
 
-
             return response()->json([
-                'message' => 'Đặt phòng thành công',
+                'message' => 'Đặt phòng thành công (giữ phòng 5 phút)',
                 'data' => $booking
             ], 201);
         } catch (\Exception $e) {
@@ -158,7 +161,6 @@ class AdminBookingController extends Controller
      */
     public function cancel($id)
     {
-
         $booking = Booking::find($id);
 
         if (!$booking) {
@@ -179,10 +181,8 @@ class AdminBookingController extends Controller
             ], 422);
         }
 
-
         $booking->status = 'cancelled';
         $booking->save();
-
 
         return response()->json([
             'message' => 'Đặt phòng đã được hủy',
@@ -197,7 +197,6 @@ class AdminBookingController extends Controller
      */
     public function confirm($id)
     {
-
         $booking = Booking::find($id);
 
         if (!$booking) {
@@ -212,7 +211,9 @@ class AdminBookingController extends Controller
             ], 422);
         }
 
+        // ✅ THÊM MỚI: clear expired_at khi đã confirm
         $booking->status = 'confirmed';
+        $booking->expired_at = null;
         $booking->save();
 
         return response()->json([
@@ -228,7 +229,6 @@ class AdminBookingController extends Controller
      */
     public function complete($id)
     {
-
         $booking = Booking::find($id);
 
         if (!$booking) {
@@ -259,12 +259,10 @@ class AdminBookingController extends Controller
      */
     public function myBookings()
     {
-
         $bookings = Booking::where('user_id', Auth::id())
             ->with(['room', 'room.roomType'])
             ->latest()
             ->paginate(10);
-
 
         return response()->json($bookings);
     }
@@ -276,10 +274,8 @@ class AdminBookingController extends Controller
      */
     public function index(Request $request)
     {
-
         $query = Booking::with(['room', 'room.roomType', 'user'])
             ->latest();
-
 
         if ($request->status) {
             $query->where('status', $request->status);
@@ -289,9 +285,7 @@ class AdminBookingController extends Controller
             $query->whereDate('check_in', $request->date);
         }
 
-
         $bookings = $query->paginate(15);
-
 
         return response()->json($bookings);
     }
