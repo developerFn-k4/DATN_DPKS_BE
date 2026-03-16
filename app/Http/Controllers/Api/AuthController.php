@@ -11,12 +11,15 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // REGISTER (không cần middleware)
+    // REGISTER
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'date_of_birth' => 'nullable|date',
             'password' => 'required|min:6|confirmed',
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
@@ -38,6 +41,7 @@ class AuthController extends Controller
         }
 
         $avatarPath = null;
+
         if ($request->hasFile('avatar')) {
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
@@ -45,9 +49,13 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'date_of_birth' => $request->date_of_birth,
             'password' => Hash::make($request->password),
             'avatar' => $avatarPath,
-            'role' => 'user'
+            'role' => 'user',
+            'status' => 'active'
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -60,15 +68,19 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'date_of_birth' => $user->date_of_birth,
                 'avatar' => $user->avatar
                     ? asset('storage/' . $user->avatar)
                     : null,
                 'role' => $user->role,
+                'status' => $user->status
             ]
         ], 201);
     }
 
-    // LOGIN (không cần middleware)
+    // LOGIN
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -89,12 +101,20 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        // Sai email
+        // Email không tồn tại
         if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email không tồn tại'
             ], 401);
+        }
+
+        // Kiểm tra status
+        if ($user->status === 'blocked') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản đã bị khóa'
+            ], 403);
         }
 
         // Sai mật khẩu
@@ -111,11 +131,23 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'token' => $token,
-            'user' => $user
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'date_of_birth' => $user->date_of_birth,
+                'avatar' => $user->avatar
+                    ? asset('storage/' . $user->avatar)
+                    : null,
+                'role' => $user->role,
+                'status' => $user->status
+            ]
         ]);
     }
 
-    // PROFILE (BẮT BUỘC middleware)
+    // PROFILE
     public function profile(Request $request)
     {
         return response()->json([
@@ -123,7 +155,7 @@ class AuthController extends Controller
         ]);
     }
 
-    // LOGOUT (BẮT BUỘC middleware)
+    // LOGOUT
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -134,3 +166,4 @@ class AuthController extends Controller
         ]);
     }
 }
+    
