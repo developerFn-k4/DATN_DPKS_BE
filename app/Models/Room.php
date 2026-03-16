@@ -14,7 +14,8 @@ class Room extends Model
         'room_type_id',
         'floor',
         'status',
-        'note'
+        'note',
+        'price'
     ];
 
     protected $casts = [
@@ -44,5 +45,8 @@ class Room extends Model
         return $this->hasMany(RImage::class);
     }
 
-    
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 }

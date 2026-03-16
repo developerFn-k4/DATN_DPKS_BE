@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\UserRoomImageController;
 use App\Http\Controllers\Api\UserRoomController;
 use App\Http\Controllers\Admin\AdminRImageController;
 use App\Http\Controllers\Api\UserBookingController;
+use App\Http\Controllers\Api\UserReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +73,7 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
 
 /*
     |--------------------------------------------------------------------------
-    | USER Đặt Phòng
+    | USER Đặt Phòng + review
     |--------------------------------------------------------------------------
     */
 Route::get('/available-rooms', [UserBookingController::class, 'availableRooms']);
@@ -87,4 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // hủy booking
     Route::put('/bookings/{id}/cancel', [UserBookingController::class, 'cancel']);
+
+    // review
+    Route::post('/reviews', [UserReviewController::class, 'store']);
 });
