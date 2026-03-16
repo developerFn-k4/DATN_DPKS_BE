@@ -111,9 +111,21 @@ Route::middleware(['auth:sanctum', 'admin'])
             [AdminBookingController::class, 'confirm']
         );
 
-        // hoàn thành booking
+        // check-in
         Route::put(
-            '/bookings/{id}/complete',
+            '/bookings/{id}/checkin',
+            [AdminBookingController::class, 'checkIn']
+        );
+
+        // checkout
+        Route::put(
+            '/bookings/{id}/checkout',
             [AdminBookingController::class, 'complete']
+        );
+
+        // hủy booking
+        Route::put(
+            '/bookings/{id}/cancel',
+            [AdminBookingController::class, 'cancel']
         );
     });
