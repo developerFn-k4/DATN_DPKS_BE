@@ -41,10 +41,13 @@ class UserBookingController extends Controller
 
 
     /**
-     * Đặt phòng
+     * =====================================================
+     * USER ĐẶT PHÒNG
+     * =====================================================
      */
     public function store(Request $request)
     {
+
         if (!Auth::check()) {
             return response()->json([
                 'message' => 'Unauthorized'
@@ -53,25 +56,21 @@ class UserBookingController extends Controller
 
         $data = $request->validate([
             'room_id' => 'required|exists:rooms,id',
-            'name' => 'required|string|max:100',
-            'email' => 'required|email|max:100',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
             'phone' => 'required|string|max:20',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
             'guests' => 'required|integer|min:1'
-        ], [
-            'check_out.after' => 'Ngày trả phòng phải sau ngày nhận phòng',
-            'guests.min' => 'Số lượng khách phải lớn hơn 0'
         ]);
 
         DB::beginTransaction();
 
         try {
 
-            /**
-             * Khóa phòng để tránh race condition
-             */
-            $room = Room::lockForUpdate()->find($data['room_id']);
+            $room = Room::with('roomType')
+                ->lockForUpdate()
+                ->find($data['room_id']);
 
             if (!$room) {
                 return response()->json([
@@ -80,19 +79,7 @@ class UserBookingController extends Controller
             }
 
             /**
-             * Kiểm tra trạng thái phòng
-             */
-            if ($room->status !== 'available') {
-
-                DB::rollBack();
-
-                return response()->json([
-                    'message' => 'Phòng hiện không khả dụng'
-                ], 422);
-            }
-
-            /**
-             * Kiểm tra trùng lịch
+             * CHECK TRÙNG LỊCH
              */
             $conflict = Booking::where('room_id', $data['room_id'])
                 ->whereIn('status', ['pending', 'confirmed'])
@@ -114,29 +101,17 @@ class UserBookingController extends Controller
             }
 
             /**
-             * Tính số ngày
+             * TÍNH SỐ NGÀY
              */
-            $checkIn = Carbon::parse($data['check_in']);
-            $checkOut = Carbon::parse($data['check_out']);
+            $days = Carbon::parse($data['check_in'])
+                ->diffInDays(Carbon::parse($data['check_out']));
 
-            $days = $checkIn->diffInDays($checkOut);
+            $pricePerDay = $room->roomType->base_price;
 
-            if ($days <= 0) {
-                $days = 1;
-            }
+            $totalPrice = $days * $pricePerDay;
 
             /**
-             * Giá phòng
-             */
-            $price = (float) $room->price;
-
-            /**
-             * Tổng tiền
-             */
-            $totalPrice = $price * $days;
-
-            /**
-             * Tạo booking
+             * CREATE BOOKING
              */
             $booking = Booking::create([
                 'room_id' => $data['room_id'],
@@ -148,85 +123,48 @@ class UserBookingController extends Controller
                 'check_out' => $data['check_out'],
                 'guests' => $data['guests'],
                 'total_price' => $totalPrice,
-                'status' => 'pending'
+                'status' => 'pending',
+                'expired_at' => now()->addMinutes(5)
             ]);
+
+            /**
+             * UPDATE ROOM
+             */
+            $room->status = 'reserved';
+            $room->save();
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Đặt phòng thành công',
-
                 'data' => $booking,
-
                 'room_info' => [
                     'room_id' => $room->id,
                     'room_number' => $room->room_number
                 ],
-
-                'price_per_day' => $price,
+                'price_per_day' => $pricePerDay,
                 'days' => $days,
                 'total_price' => $totalPrice
-
             ], 201);
         } catch (\Exception $e) {
 
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Có lỗi xảy ra',
-                'error' => $e->getMessage()
+                'message' => 'Có lỗi xảy ra'
             ], 500);
         }
     }
 
-
-
     /**
-     * Hủy booking
-     */
-    public function cancel($id)
-    {
-
-        $booking = Booking::find($id);
-
-        if (!$booking) {
-            return response()->json([
-                'message' => 'Booking không tồn tại'
-            ], 404);
-        }
-
-        if ($booking->status === 'cancelled') {
-            return response()->json([
-                'message' => 'Booking đã bị hủy'
-            ], 422);
-        }
-
-        if ($booking->status === 'completed') {
-            return response()->json([
-                'message' => 'Booking đã hoàn thành'
-            ], 422);
-        }
-
-
-        $booking->status = 'cancelled';
-        $booking->save();
-
-
-        return response()->json([
-            'message' => 'Đặt phòng đã được hủy',
-            'data' => $booking
-        ]);
-    }
-
-
-
-    /**
-     * Admin xác nhận booking
+     * =====================================================
+     * ADMIN CONFIRM BOOKING
+     * =====================================================
      */
     public function confirm($id)
     {
 
-        $booking = Booking::find($id);
+        $booking = Booking::with('room')->find($id);
 
         if (!$booking) {
             return response()->json([
@@ -240,24 +178,42 @@ class UserBookingController extends Controller
             ], 422);
         }
 
-        $booking->status = 'confirmed';
-        $booking->save();
+        DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Booking đã được xác nhận',
-            'data' => $booking
-        ]);
+        try {
+
+            $booking->status = 'confirmed';
+            $booking->expired_at = null;
+            $booking->save();
+
+            $booking->room->status = 'booked';
+            $booking->room->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Booking đã được xác nhận',
+                'data' => $booking
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra'
+            ], 500);
+        }
     }
 
-
-
     /**
-     * Check-out
+     * =====================================================
+     * CHECK-IN
+     * =====================================================
      */
-    public function complete($id)
+    public function checkIn($id)
     {
 
-        $booking = Booking::find($id);
+        $booking = Booking::with('room')->find($id);
 
         if (!$booking) {
             return response()->json([
@@ -271,13 +227,120 @@ class UserBookingController extends Controller
             ], 422);
         }
 
-        $booking->status = 'completed';
-        $booking->save();
+        DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Booking đã hoàn thành',
-            'data' => $booking
-        ]);
+        try {
+
+            $booking->room->status = 'occupied';
+            $booking->room->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Khách đã check-in'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra'
+            ], 500);
+        }
+    }
+
+    /**
+     * =====================================================
+     * CHECK-OUT
+     * =====================================================
+     */
+    public function complete($id)
+    {
+
+        $booking = Booking::with('room')->find($id);
+
+        if (!$booking) {
+            return response()->json([
+                'message' => 'Booking không tồn tại'
+            ], 404);
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return response()->json([
+                'message' => 'Booking chưa được xác nhận'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $booking->status = 'completed';
+            $booking->save();
+
+            $booking->room->status = 'available';
+            $booking->room->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Booking đã hoàn thành'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra'
+            ], 500);
+        }
+    }
+
+    /**
+     * =====================================================
+     * CANCEL BOOKING
+     * =====================================================
+     */
+    public function cancel($id)
+    {
+
+        $booking = Booking::with('room')->find($id);
+
+        if (!$booking) {
+            return response()->json([
+                'message' => 'Booking không tồn tại'
+            ], 404);
+        }
+
+        if (in_array($booking->status, ['cancelled', 'completed'])) {
+            return response()->json([
+                'message' => 'Booking không thể hủy'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $booking->status = 'cancelled';
+            $booking->save();
+
+            $booking->room->status = 'available';
+            $booking->room->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Đã hủy booking'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra'
+            ], 500);
+        }
     }
 
 
