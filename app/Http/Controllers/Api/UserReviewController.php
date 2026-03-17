@@ -86,7 +86,83 @@ class UserReviewController extends Controller
             'success' => true,
             'data' => $review
         ]);
+    }
 
-        
+
+    /**
+     * sửa review
+     */
+    public function update(Request $request, Review $review)
+    {
+
+        /**
+         * Check quyền
+         */
+        if ($review->user_id !== Auth::id()) {
+            return response()->json([
+                'message' => 'Không có quyền sửa review'
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'cleanliness' => 'required|integer|min:1|max:5',
+            'comfort' => 'required|integer|min:1|max:5',
+            'location' => 'required|integer|min:1|max:5',
+            'service' => 'required|integer|min:1|max:5',
+            'value' => 'required|integer|min:1|max:5',
+            'wifi' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string'
+        ]);
+
+        /**
+         * Tính lại overall
+         */
+        $overall = (
+            $data['cleanliness'] +
+            $data['comfort'] +
+            $data['location'] +
+            $data['service'] +
+            $data['value'] +
+            $data['wifi']
+        ) / 6;
+
+        $review->update([
+            'cleanliness' => $data['cleanliness'],
+            'comfort' => $data['comfort'],
+            'location' => $data['location'],
+            'service' => $data['service'],
+            'value' => $data['value'],
+            'wifi' => $data['wifi'],
+            'overall_score' => $overall,
+            'comment' => $data['comment']
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $review
+        ]);
+    }
+
+    /**
+     * xóa review
+     */
+    public function destroy(Review $review)
+    {
+
+        /**
+         * Check quyền
+         */
+        if ($review->user_id !== Auth::id()) {
+            return response()->json([
+                'message' => 'Không có quyền xóa review'
+            ], 403);
+        }
+
+        $review->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa review'
+        ]);
     }
 }
