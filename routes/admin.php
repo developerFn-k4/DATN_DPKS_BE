@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdminRoomTypeImageController;
 use App\Http\Controllers\Admin\AdminRImageController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserController;
 
 /*
@@ -137,4 +138,17 @@ Route::middleware(['auth:sanctum', 'admin'])
             '/bookings/{id}/cancel',
             [AdminBookingController::class, 'cancel']
         );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Review
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/reviews', [AdminReviewController::class, 'index']);
+
+        Route::get('/reviews/{id}', [AdminReviewController::class, 'show']);
+
+        Route::delete('/reviews/{id}', [AdminReviewController::class, 'destroy']);
     });
