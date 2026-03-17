@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdminRoomTypeImageController;
 use App\Http\Controllers\Admin\AdminRImageController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,7 +26,15 @@ Route::middleware(['auth:sanctum', 'admin'])
         */
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
+        /*
+        |--------------------------------------------------------------------------
+        | USERS
+        |--------------------------------------------------------------------------
+        */
+        Route::apiResource('users', AdminUserController::class);
 
+        // chuyển trạng thái user
+        Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
         /*
         |--------------------------------------------------------------------------
         | ROOM TYPES
