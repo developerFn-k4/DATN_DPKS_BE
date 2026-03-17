@@ -91,4 +91,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // review
     Route::post('/reviews', [UserReviewController::class, 'store']);
+    Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
+    Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
 });
