@@ -34,7 +34,7 @@ Route::middleware(['auth:sanctum', 'admin'])
         Route::apiResource('users', AdminUserController::class);
 
         // chuyển trạng thái user
-        Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
+        Route::patch('users/{id}/status', [AdminUserController::class, 'changeStatus']);
         /*
         |--------------------------------------------------------------------------
         | ROOM TYPES
