@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\UserRoomImageController;
 use App\Http\Controllers\Api\UserRoomController;
 use App\Http\Controllers\Admin\AdminRImageController;
 use App\Http\Controllers\Api\UserBookingController;
+use App\Http\Controllers\Api\BookingPaymentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,6 +77,9 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 Route::get('/available-rooms', [UserBookingController::class, 'availableRooms']);
+Route::get('/bookings/payment/vnpay-return', [BookingPaymentController::class, 'vnpayReturn']);
+Route::get('/bookings/{id}/payment/mock-return', [BookingPaymentController::class, 'mockPaymentReturn']);
+Route::match(['GET', 'POST'], '/bookings/payment/vnpay-ipn', [BookingPaymentController::class, 'vnpayIpn']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -87,4 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // hủy booking
     Route::put('/bookings/{id}/cancel', [UserBookingController::class, 'cancel']);
+
+    // tạo link thanh toán VNPay
+    Route::post('/bookings/{id}/payment/vnpay', [BookingPaymentController::class, 'createVnpayPayment']);
 });

@@ -8,22 +8,25 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // This migration duplicates an earlier creation of room_types.
+        // Keep it as a no-op to preserve migration history without conflicts.
+        if (Schema::hasTable('room_types')) {
+            return;
+        }
+
         Schema::create('room_types', function (Blueprint $table) {
-
             $table->id();
-
             $table->string('name');
             $table->text('description')->nullable();
             $table->integer('capacity');
             $table->string('bed_type');
-            $table->decimal('base_price',10,2);
-
+            $table->decimal('base_price', 10, 2);
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('room_types');
+        // No-op: room_types is managed by an earlier migration.
     }
 };

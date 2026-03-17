@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
@@ -122,5 +124,16 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Mode
+    |--------------------------------------------------------------------------
+    | 
+    | Determines which payment gateway to use.
+    | Options: 'mock' (for testing), 'vnpay' (production)
+    |
+    */
+    'payment_mode' => env('PAYMENT_MODE', 'vnpay'),
 
 ];

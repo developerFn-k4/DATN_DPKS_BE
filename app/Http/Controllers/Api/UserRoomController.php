@@ -21,11 +21,23 @@ class UserRoomController extends Controller
     // Chi tiết phòng
     public function show(Room $room)
     {
-        $room->load('roomType');
+        $room->load(['roomType', 'images']);
 
         return response()->json([
             'success' => true,
-            'data' => $room
+            'room' => $room,
+            'rating_summary' => [
+                'cleanliness' => 0,
+                'comfort' => 0,
+                'location' => 0,
+                'service' => 0,
+                'value' => 0,
+                'wifi' => 0,
+                'overall' => 0,
+                'total_reviews' => 0,
+            ],
+            'reviews' => [],
+            'related_rooms' => [],
         ]);
     }
 }

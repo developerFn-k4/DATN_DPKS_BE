@@ -16,14 +16,22 @@ class Booking extends Model
         'check_out',
         'guests',
         'status',
-        'total_price'
+        'payment_method',
+        'payment_status',
+        'total_price',
+        'payment_txn_ref',
+        'payment_transaction_no',
+        'paid_at',
+        'payment_response',
     ];
 
     protected $casts = [
         'check_in' => 'date',
         'check_out' => 'date',
         'guests' => 'integer',
-        'total_price' => 'decimal:2'
+        'total_price' => 'decimal:2',
+        'paid_at' => 'datetime',
+        'payment_response' => 'array',
     ];
 
     /*

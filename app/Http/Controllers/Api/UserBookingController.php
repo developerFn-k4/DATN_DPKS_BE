@@ -56,11 +56,27 @@ class UserBookingController extends Controller
             'room_id' => 'required|exists:rooms,id',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1'
+            'guests' => 'required|integer|min:1',
+            'payment_method' => 'nullable|in:vnpay,pay_at_hotel',
         ], [
             'check_out.after' => 'Ngày trả phòng phải sau ngày nhận phòng',
-            'guests.min' => 'Số lượng khách phải lớn hơn 0'
+            'guests.min' => 'Số lượng khách phải lớn hơn 0',
+            'payment_method.in' => 'Phuong thuc thanh toan khong hop le',
         ]);
+
+        $paymentMethod = $data['payment_method'] ?? 'vnpay';
+
+        if ($paymentMethod === 'vnpay') {
+            $tmnCode = (string) config('services.vnpay.tmn_code');
+            $hashSecret = (string) config('services.vnpay.hash_secret');
+            $returnUrl = (string) config('services.vnpay.return_url');
+
+            if ($tmnCode === '' || $hashSecret === '' || $returnUrl === '') {
+                return response()->json([
+                    'message' => 'VNPay configuration is incomplete.',
+                ], 422);
+            }
+        }
 
 
 
@@ -130,7 +146,9 @@ class UserBookingController extends Controller
                 'check_out' => $data['check_out'],
                 'guests' => $data['guests'],
                 'total_price' => $totalPrice,
-                'status' => 'pending'
+                'status' => 'pending',
+                'payment_method' => $paymentMethod,
+                'payment_status' => 'unpaid',
             ]);
 
 
