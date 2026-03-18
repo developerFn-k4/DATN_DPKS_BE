@@ -63,7 +63,8 @@ class AdminRoomController extends Controller
 
             'price' => 'required|numeric|min:0',
             'note' => 'nullable|string',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048'
+            'images' => 'required|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
         DB::beginTransaction();
