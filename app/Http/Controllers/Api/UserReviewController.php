@@ -39,14 +39,14 @@ class UserReviewController extends Controller
             ], 403);
         }
 
-        /**
-         * Chỉ booking completed mới review
-         */
-        if ($booking->status !== 'completed') {
-            return response()->json([
-                'message' => 'Bạn chưa hoàn thành trải nghiệm phòng'
-            ], 422);
-        }
+        // /**
+        //  * Chỉ booking completed mới review
+        //  */
+        // if ($booking->status !== 'completed') {
+        //     return response()->json([
+        //         'message' => 'Bạn chưa hoàn thành trải nghiệm phòng'
+        //     ], 422);
+        // }
 
         /**
          * Booking chỉ review 1 lần
