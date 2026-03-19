@@ -28,6 +28,14 @@ Route::middleware(['auth:sanctum', 'admin'])
         */
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
+        
+        // chuyển trạng thái user
+        Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
+        // thống kê user
+        Route::get('users/stats', [AdminUserController::class, 'stats']);
+        Route::get('users/chart', [AdminUserController::class, 'chart']);
+        Route::get('users/top', [AdminUserController::class, 'topUsers']); // nếu có booking
+
         /*
         |--------------------------------------------------------------------------
         | USERS
@@ -35,8 +43,6 @@ Route::middleware(['auth:sanctum', 'admin'])
         */
         Route::apiResource('users', AdminUserController::class);
 
-        // chuyển trạng thái user
-        Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
         /*
         |--------------------------------------------------------------------------
         | ROOM TYPES
