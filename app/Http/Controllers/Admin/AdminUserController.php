@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Booking;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -175,6 +178,109 @@ class AdminUserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Xóa người dùng thành công'
+        ]);
+    }
+    /**
+     * GET /api/admin/users/stats
+     * Thống kê tổng quan user
+     */
+    public function stats()
+    {
+        $totalUsers = User::count();
+
+        $activeUsers = User::where('status', 'active')->count();
+        $blockedUsers = User::where('status', 'blocked')->count();
+
+        // User mới
+        $today = Carbon::today();
+        $thisWeek = Carbon::now()->startOfWeek();
+        $thisMonth = Carbon::now()->startOfMonth();
+
+        $newToday = User::whereDate('created_at', $today)->count();
+        $newWeek = User::where('created_at', '>=', $thisWeek)->count();
+        $newMonth = User::where('created_at', '>=', $thisMonth)->count();
+
+        // User chưa verify email
+        $unverifiedUsers = User::whereNull('email_verified_at')->count();
+
+        // User lâu không login (nếu có last_login_at)
+        // $inactiveUsers = User::where('last_login_at', '<', Carbon::now()->subDays(30))->count();
+
+        // Thống kê theo role
+        $usersByRole = User::select('role', DB::raw('count(*) as total'))
+            ->groupBy('role')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_users' => $totalUsers,
+                'active_users' => $activeUsers,
+                'blocked_users' => $blockedUsers,
+
+                'new_users' => [
+                    'today' => $newToday,
+                    'this_week' => $newWeek,
+                    'this_month' => $newMonth,
+                ],
+
+                'unverified_users' => $unverifiedUsers,
+                // 'inactive_30_days' => $inactiveUsers,
+
+                'users_by_role' => $usersByRole,
+            ]
+        ]);
+    }
+    /**
+     * GET /api/admin/users/chart
+     * Biểu đồ user theo thời gian
+     */
+    public function chart(Request $request)
+    {
+        $type = $request->get('type', '7_days');
+
+        if ($type === '7_days') {
+            $data = User::select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('count(*) as total')
+            )
+                ->where('created_at', '>=', Carbon::now()->subDays(7))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+        } elseif ($type === '12_months') {
+            $data = User::select(
+                DB::raw('MONTH(created_at) as month'),
+                DB::raw('count(*) as total')
+            )
+                ->where('created_at', '>=', Carbon::now()->subMonths(12))
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get();
+        } else {
+            $data = [];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+    /**
+     * GET /api/admin/users/top
+     */
+    public function topUsers()
+    {
+        $topUsers = Booking::select('user_id', DB::raw('count(*) as total_bookings'))
+            ->groupBy('user_id')
+            ->orderByDesc('total_bookings')
+            ->with('user:id,name,email')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $topUsers
         ]);
     }
 }
