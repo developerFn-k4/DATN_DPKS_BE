@@ -22,27 +22,20 @@ class AdminReviewController extends Controller
             'user:id,name'
         ]);
 
-        /**
-         * SEARCH PHÒNG
-         */
         if ($request->search) {
-            $query->whereHas('room', function ($q) use ($request) {
-                $q->where('room_number', 'like', '%' . $request->search . '%');
+
+            $query->where(function ($q) use ($request) {
+
+                // tìm theo số phòng
+                $q->whereHas('room', function ($room) use ($request) {
+                    $room->where('room_number', 'like', '%' . $request->search . '%');
+                })
+
+                    // tìm theo tên khách
+                    ->orWhereHas('user', function ($user) use ($request) {
+                        $user->where('name', 'like', '%' . $request->search . '%');
+                    });
             });
-        }
-
-        /**
-         * FILTER PHÒNG
-         */
-        if ($request->room_id) {
-            $query->where('room_id', $request->room_id);
-        }
-
-        /**
-         * FILTER RATING
-         */
-        if ($request->rating) {
-            $query->where('overall_score', '>=', $request->rating);
         }
 
         $reviews = $query->latest()->paginate(10);

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\UserRoomTypeController;
 use App\Http\Controllers\Api\UserRoomImageController;
 use App\Http\Controllers\Api\UserRoomController;
 use App\Http\Controllers\Admin\AdminRImageController;
+use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\Api\UserBookingController;
 use App\Http\Controllers\Api\UserReviewController;
 
@@ -18,18 +19,17 @@ use App\Http\Controllers\Api\UserReviewController;
 
 Route::prefix('rooms')->group(function () {
 
+    //Tìm kiếm phòng
+    Route::get('/search', [UserRoomTypeController::class, 'search']);
     // Danh sách loại phòng
     Route::get('/room-types', [UserRoomTypeController::class, 'index']);
-
     // Chi tiết loại phòng
     Route::get('/room-types/{id}', [UserRoomTypeController::class, 'show']);
-
     // Ảnh của loại phòng
     Route::get('/room-types/{roomType}/images', [UserRoomImageController::class, 'index']);
-
+    
     // Danh sách phòng
     Route::get('/', [UserRoomController::class, 'index']);
-
     // Chi tiết phòng
     Route::get('/{room}', [UserRoomController::class, 'show']);
 
@@ -93,4 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reviews', [UserReviewController::class, 'store']);
     Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
     Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
+
+
+    Route::post('/payment/vnpay/{bookingId}', [PaymentController::class, 'createVnpay']);
+    Route::get('/payment/vnpay-return', [PaymentController::class, 'vnpayReturn']);
+    Route::get('/payment/fake-success/{orderId}', [PaymentController::class, 'fakeVnpaySuccess']);
 });
