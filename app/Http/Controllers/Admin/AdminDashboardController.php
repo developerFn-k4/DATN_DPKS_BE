@@ -24,7 +24,7 @@ class AdminDashboardController extends Controller
 
         $totalRooms = Room::count();
         $totalRoomTypes = RoomType::count();
-        $totalUsers = User::count();
+        $totalUsers = User::where('role', '!=', 'admin')->count();
 
         /*
         |--------------------------------------------------------------------------
