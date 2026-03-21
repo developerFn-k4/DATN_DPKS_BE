@@ -18,10 +18,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             // HotelSeeder::class,
             // RoomTypeSeeder::class,
-            // RoomSeeder::class,
+            RoomSeeder::class,
             // RoomImageSeeder::class,
             // UserSeeder::class,
-            ReviewSeeder::class
+            // ReviewSeeder::class
         ]);
     }
 }
