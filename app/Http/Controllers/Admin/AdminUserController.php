@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\User;
+
 
 class AdminUserController extends Controller
 {
@@ -19,7 +20,7 @@ class AdminUserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::query()->where('role', '!=', 'admin');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -38,6 +39,7 @@ class AdminUserController extends Controller
      */
     public function show(int $id)
     {
+        // Cho phép tìm kiếm cả admin
         $user = User::find($id);
 
         if (!$user) {
@@ -47,12 +49,16 @@ class AdminUserController extends Controller
             ], 404);
         }
 
-        // Nếu user là admin, chỉ cho phép admin khác lấy thông tin
-        if ($user->role === 'admin' && (!Auth::user() || Auth::user()->role !== 'admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Bạn không có quyền truy cập thông tin quản trị viên'
-            ], 403);
+        // Kiểm tra logic auth code/role: Nếu user cần lấy là admin, 
+        // người thực hiện request bắt buộc cũng phải là admin
+        if ($user->role === 'admin') {
+            $currentUser = Auth::user();
+            if (!$currentUser || $currentUser->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn không có quyền truy cập thông tin của quản trị viên'
+                ], 403);
+            }
         }
 
         return response()->json([
@@ -282,8 +288,7 @@ class AdminUserController extends Controller
      */
     public function topUsers()
     {
-        $topUsers = Booking::query()
-            ->select('user_id', DB::raw('count(*) as total_bookings'))
+        $topUsers = Booking::select('user_id', DB::raw('count(*) as total_bookings'))
             ->groupBy('user_id')
             ->orderByDesc('total_bookings')
             ->with('user:id,name,email')
