@@ -6,43 +6,48 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Models\Service;
 use Illuminate\Http\Request;
 
 class UserRoomTypeController extends Controller
 {
-    // Danh sách phòng
+    // Danh sách phòng (index)
     public function index()
     {
+        $today = Carbon::today();
+
         $roomTypes = RoomType::where('status', 'active')
-            ->withCount('rooms') // tổng số phòng
+            ->with('images')
+            ->withCount('rooms')
+            ->whereHas('rooms', function ($query) use ($today) {
+                $query->whereDoesntHave('bookingRooms.booking', function ($q) use ($today) {
+                    $q->whereDate('check_in', '<=', $today)
+                        ->whereDate('check_out', '>=', $today);
+                });
+            })
             ->get();
 
-        $result = $roomTypes->map(function ($type) {
+        $result = $roomTypes->map(function ($type) use ($today) {
 
-            // phòng đang trống
-            $availableRooms = Room::where('room_type_id', $type->id)
-                ->whereDoesntHave('bookings', function ($query) {
-
-                    $query->where(function ($q) {
-                        $q->whereDate('check_in', '<=', now())
-                            ->whereDate('check_out', '>=', now());
-                    });
-                })->count();
+            $availableRooms = $type->rooms()
+                ->whereDoesntHave('bookingRooms.booking', function ($q) use ($today) {
+                    $q->whereDate('check_in', '<=', $today)
+                        ->whereDate('check_out', '>=', $today);
+                })
+                ->count();
 
             return [
                 'room_type_id' => $type->id,
                 'name' => $type->name,
                 'capacity' => $type->capacity,
                 'bed_type' => $type->bed_type,
-
                 'area' => $type->area,
                 'amenities' => $type->amenities ? json_decode($type->amenities) : [],
-
                 'base_price' => $type->base_price,
                 'currency' => $type->currency,
-
                 'total_rooms' => $type->rooms_count,
-                'available_rooms' => $availableRooms
+                'available_rooms' => $availableRooms,
+                'images' => $type->images->map(fn($img) => asset('storage/' . $img->image_url)),
             ];
         });
 
@@ -50,13 +55,16 @@ class UserRoomTypeController extends Controller
             'room_types' => $result
         ]);
     }
+
     // Tìm kiếm phòng
+
     public function search(Request $request)
     {
         $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'adults' => 'required|integer|min:1',
+            'name' => 'nullable|string',
+            'adults' => 'nullable|integer|min:1',
             'children_ages' => 'nullable|array'
         ]);
 
@@ -67,25 +75,45 @@ class UserRoomTypeController extends Controller
         $childrenAges = $request->children_ages ?? [];
 
         $children = 0;
+        $childrenWeight = 0;
 
-        // phân loại trẻ em
         foreach ($childrenAges as $age) {
 
-            if ($age >= 11) {
-                $adults++; // tính như người lớn
+            if ($age < 10) {
+                $childrenWeight += 0.5;
             } else {
-                $children++; // miễn phí
+                $childrenWeight += 1;
             }
+
+            $children++;
         }
 
-        $totalGuests = $adults;
+        $totalGuests = $adults + $childrenWeight;
+        $requiredCapacity = ceil($totalGuests);
 
         $nights = Carbon::parse($checkIn)->diffInDays($checkOut);
 
-        // lấy loại phòng phù hợp
-        $roomTypes = RoomType::where('status', 'active')
-            ->where('capacity', '>=', $totalGuests)
-            ->get();
+        /*
+    |--------------------------------------------------------------------------
+    | Query room types
+    |--------------------------------------------------------------------------
+    */
+
+        $roomTypesQuery = RoomType::where('status', 'active');
+
+        // tìm theo tên
+        if ($request->filled('name')) {
+            $roomTypesQuery->where('name', 'LIKE', '%' . $request->name . '%');
+        }
+
+        // tìm theo số người
+        if ($request->filled('adults')) {
+            $roomTypesQuery->where('capacity', '>=', $requiredCapacity);
+        }
+
+        $roomTypes = $roomTypesQuery->with('images')->get();
+
+        $services = Service::all();
 
         $result = [];
 
@@ -93,22 +121,20 @@ class UserRoomTypeController extends Controller
 
             $availableRooms = Room::where('room_type_id', $type->id)
                 ->where('status', 'available')
-                ->whereDoesntHave('bookings', function ($query) use ($checkIn, $checkOut) {
-
-                    $query->where(function ($q) use ($checkIn, $checkOut) {
-                        $q->where('check_in', '<', $checkOut)
+                ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
+                    $q->where(function ($q2) use ($checkIn, $checkOut) {
+                        $q2->where('check_in', '<', $checkOut)
                             ->where('check_out', '>', $checkIn);
                     });
-                })->count();
-
+                })
+                ->count();
 
             if ($availableRooms > 0) {
 
                 $pricePerNight = $type->base_price;
-
                 $totalPrice = $pricePerNight * $nights;
 
-                $finalPrice = $totalPrice * 1.05;
+                $finalPrice = round($totalPrice * 1.05);
 
                 $result[] = [
                     'room_type_id' => $type->id,
@@ -116,15 +142,38 @@ class UserRoomTypeController extends Controller
                     'capacity' => $type->capacity,
                     'bed_type' => $type->bed_type,
                     'area' => $type->area,
-                    'amenities' => $type->amenities ? json_decode($type->amenities) : [],
+
+                    'amenities' => $type->amenities
+                        ? json_decode($type->amenities)
+                        : [],
+
                     'price_per_night' => $pricePerNight,
                     'nights' => $nights,
-                    'total_price' => round($finalPrice),
-                    'price_note' => 'Đã bao gồm thuế và phí',
+                    'total_price' => $finalPrice,
                     'currency' => $type->currency,
-                    'available_rooms' => $availableRooms
+
+                    'available_rooms' => $availableRooms,
+
+                    'images' => $type->images->map(function ($img) {
+                        return asset('storage/' . $img->image_url);
+                    }),
+
+                    'services' => $services->map(function ($s) {
+                        return [
+                            'service_id' => $s->id,
+                            'name' => $s->name,
+                            'price' => $s->price,
+                            'currency' => $s->currency
+                        ];
+                    })
                 ];
             }
+        }
+
+        if (count($result) == 0) {
+            return response()->json([
+                'message' => 'Không có phòng phù hợp'
+            ], 404);
         }
 
         $collection = collect($result)
@@ -133,26 +182,6 @@ class UserRoomTypeController extends Controller
                 ['total_price', 'asc']
             ])
             ->values();
-
-        $bestRoom = $collection->first();
-
-        $recommendation = null;
-
-        if ($bestRoom) {
-
-            $recommendation = [
-                'message' => "Lựa chọn rẻ nhất tại chỗ nghỉ này cho {$adults} người lớn, {$children} trẻ em",
-                'room_type_id' => $bestRoom['room_type_id'],
-                'room_type' => $bestRoom['name'],
-                'capacity' => $bestRoom['capacity'],
-                'bed_type' => $bestRoom['bed_type'],
-                'area' => $bestRoom['area'],
-                'total_price' => $bestRoom['total_price'],
-                'price_note' => 'Đã bao gồm thuế và phí',
-                'currency' => $bestRoom['currency'],
-                'available_rooms' => $bestRoom['available_rooms']
-            ];
-        }
 
         return response()->json([
             'search_info' => [
@@ -163,21 +192,15 @@ class UserRoomTypeController extends Controller
                 'children' => $children,
                 'total_guests' => $totalGuests
             ],
-            'recommendation' => $recommendation,
             'room_types' => $collection
         ]);
     }
 
-    // show
+    // Show chi tiết 1 phòng
     public function show($id)
     {
-        $roomType = RoomType::with('images')
-            ->where('status', 'active')
-            ->findOrFail($id);
-
-        $images = $roomType->images->map(function ($img) {
-            return $img->image_url;
-        });
+        $roomType = RoomType::with('images')->where('status', 'active')->findOrFail($id);
+        $images = $roomType->images->map(fn($img) => asset('storage/' . $img->image_url));
 
         return response()->json([
             'room_type' => [
@@ -186,16 +209,12 @@ class UserRoomTypeController extends Controller
                 'name' => $roomType->name,
                 'capacity' => $roomType->capacity,
                 'bed_type' => $roomType->bed_type,
-
-                // trường mới
                 'area' => $roomType->area,
                 'amenities' => $roomType->amenities ? json_decode($roomType->amenities) : [],
-
                 'base_price' => $roomType->base_price,
                 'currency' => $roomType->currency,
-                'status' => $roomType->status,
+                'status' => $roomType->status
             ],
-
             'images' => $images
         ]);
     }

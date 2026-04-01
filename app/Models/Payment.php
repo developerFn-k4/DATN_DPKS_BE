@@ -12,7 +12,6 @@ class Payment extends Model
         'request_id',
         'amount',
         'method',
-        'transaction_id',
         'status'
     ];
 

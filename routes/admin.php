@@ -43,9 +43,9 @@ Route::middleware(['auth:sanctum', 'admin'])
         |--------------------------------------------------------------------------
         */
 
-        Route::apiResource('room-types', AdminRoomTypeController::class);   
+        Route::apiResource('room-types', AdminRoomTypeController::class);
 
-
+        Route::put('room-types/{id}/restore', [AdminRoomTypeController::class, 'restore']);
         /*
         |--------------------------------------------------------------------------
         | ROOM TYPE IMAGES
@@ -79,36 +79,17 @@ Route::middleware(['auth:sanctum', 'admin'])
         | BOOKINGS
         |--------------------------------------------------------------------------
         */
+        Route::get('/search', [AdminBookingController::class, 'search']);
 
-        // danh sách booking
-        Route::get(
-            '/bookings',
-            [AdminBookingController::class, 'index']
-        );
+        Route::post('/calculate-price', [AdminBookingController::class, 'calculatePrice']);
 
-        // xác nhận booking
-        Route::put(
-            '/bookings/{id}/confirm',
-            [AdminBookingController::class, 'confirm']
-        );
+        Route::post('/booking', [AdminBookingController::class, 'store']);
 
-        // check-in
-        Route::put(
-            '/bookings/{id}/checkin',
-            [AdminBookingController::class, 'checkIn']
-        );
+        Route::post('/payment/momo/{booking}', [AdminBookingController::class, 'momoPayment']);
 
-        // checkout
-        Route::put(
-            '/bookings/{id}/checkout',
-            [AdminBookingController::class, 'complete']
-        );
+        Route::post('/payment/webhook', [AdminBookingController::class, 'momoWebhook']);
 
-        // hủy booking
-        Route::put(
-            '/bookings/{id}/cancel',
-            [AdminBookingController::class, 'cancel']
-        );
+        Route::post('/booking/{id}/cancel', [AdminBookingController::class, 'cancel']);
 
 
         /*
