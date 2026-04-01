@@ -4,11 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
-use App\Models\RImage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 
 class AdminRoomController extends Controller
 {
@@ -20,7 +17,10 @@ class AdminRoomController extends Controller
      */
     public function index()
     {
-        $rooms = Room::with(['roomType', 'images'])->latest()->get();
+        $rooms = Room::with(['roomType:id,name'])
+            ->select('id', 'room_number', 'room_type_id', 'floor', 'status', 'note', 'created_at', 'updated_at')
+            ->latest()
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -61,50 +61,16 @@ class AdminRoomController extends Controller
                 ])
             ],
 
-            'price' => 'required|numeric|min:0',
             'note' => 'nullable|string',
-            'images' => 'required|array',
-            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
-        DB::beginTransaction();
+        $room = Room::create($data);
 
-        try {
-
-            $room = Room::create($data);
-
-            if ($request->hasFile('images')) {
-
-                foreach ($request->file('images') as $file) {
-
-                    $path = $file->store('rooms', 'public');
-
-                    RImage::create([
-                        'room_id' => $room->id,
-                        'image_url' => $path
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            $room->load(['roomType', 'images']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Room created successfully',
-                'data' => $room
-            ], 201);
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Create room failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo phòng thành công',
+            'data' => $room
+        ], 201);
     }
 
 
@@ -115,7 +81,8 @@ class AdminRoomController extends Controller
      */
     public function show(Room $room)
     {
-        $room->load(['roomType', 'images']);
+
+        $room->load(['roomType:id,name']);
 
         return response()->json([
             'success' => true,
@@ -158,69 +125,15 @@ class AdminRoomController extends Controller
                 ])
             ],
 
-            'price' => 'sometimes|numeric|min:0',
             'note' => 'sometimes|nullable|string',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048'
         ]);
 
-        DB::beginTransaction();
-
-        try {
-
-            $room->update(collect($data)->except('images')->toArray());
-
-            if ($request->hasFile('images')) {
-
-                foreach ($request->file('images') as $file) {
-
-                    $path = $file->store('rooms', 'public');
-
-                    RImage::create([
-                        'room_id' => $room->id,
-                        'image_url' => $path
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            $room->load(['roomType', 'images']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Room updated successfully',
-                'data' => $room
-            ]);
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Update failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-
-    /**
-     * =========================================================
-     * DELETE IMAGE
-     * =========================================================
-     */
-    public function deleteImage($imageId)
-    {
-
-        $image = RImage::findOrFail($imageId);
-
-        Storage::disk('public')->delete($image->image_url);
-
-        $image->delete();
+        $room->update($data);
 
         return response()->json([
             'success' => true,
-            'message' => 'Xóa ảnh thành công'
+            'message' => 'Cập nhật phòng thành công',
+            'data' => $room
         ]);
     }
 
@@ -232,13 +145,6 @@ class AdminRoomController extends Controller
      */
     public function destroy(Room $room)
     {
-
-        foreach ($room->images as $image) {
-
-            Storage::disk('public')->delete($image->image_url);
-
-            $image->delete();
-        }
 
         $room->delete();
 
@@ -262,7 +168,7 @@ class AdminRoomController extends Controller
         if (!$room->trashed()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Phòng này chưa bị xóa'
+                'message' => 'Phòng chưa bị xóa'
             ], 400);
         }
 

@@ -13,10 +13,13 @@ class RoomType extends Model
     protected $fillable = [
         'hotel_id',
         'name',
-        'description',
         'capacity',
         'bed_type',
-        'base_price'
+        'area',
+        'amenities',
+        'base_price',
+        'currency',
+        'status'
     ];
 
     protected $casts = [
@@ -38,9 +41,8 @@ class RoomType extends Model
     }
 
     // loại phòng có nhiều ảnh
-    public function images(): HasMany
+    public function images()
     {
-        return $this->hasMany(RoomImage::class);
+        return $this->hasMany(RoomImage::class, 'room_type_id');
     }
-
 }
