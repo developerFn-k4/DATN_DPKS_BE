@@ -24,8 +24,7 @@ class AdminDashboardController extends Controller
 
         $totalRooms = Room::count();
         $totalRoomTypes = RoomType::count();
-        $totalUsers = User::count();
-        $totalBookings = Booking::count();
+        $totalUsers = User::where('role', '!=', 'admin')->count();
 
         /*
         |--------------------------------------------------------------------------
@@ -93,7 +92,15 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 4. TOP 5 ROOMS MOST BOOKED
+        | 4. TOTAL BOOKINGS COUNT
+        |--------------------------------------------------------------------------
+        */
+
+        $totalBookings = Booking::count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. TOP 5 ROOMS MOST BOOKED
         |--------------------------------------------------------------------------
         */
 
@@ -110,7 +117,7 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 5. ROOM TYPE BOOKING PERCENTAGE
+        | 6. ROOM TYPE BOOKING PERCENTAGE
         |--------------------------------------------------------------------------
         */
 
@@ -128,7 +135,7 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 6. LATEST BOOKINGS
+        | 7. LATEST BOOKINGS
         |--------------------------------------------------------------------------
         */
 
@@ -139,7 +146,7 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 7. RESPONSE
+        | 8. RESPONSE
         |--------------------------------------------------------------------------
         */
 

@@ -1,0 +1,76 @@
+DANH SÁCH API QUẢN LÝ NGƯỜI DÙNG (USER SIDE)
+===========================================================
+
+Ghi chú: 
+- Tất cả các API dưới đây đều yêu cầu Header: 
+  Authorization: Bearer {your_token}
+  Accept: application/json
+
+1. THÔNG TIN CÁ NHÂN & TÀI KHOẢN
+-----------------------------------------------------------
+
+* Lấy thông tin cá nhân:
+  - Method: GET
+  - URL: /api/auth/profile
+  - Mô tả: Trả về thông tin chi tiết của người dùng đang đăng nhập.
+
+* Cập nhật thông tin cá nhân:
+  - Method: PUT
+  - URL: /api/auth/profile
+  - Request Body (JSON):
+    {
+      "name": "Nguyễn Văn A",
+      "phone": "0987654321",
+      "address": "123 Đường ABC, Hà Nội",
+      "date_of_birth": "1995-05-20"
+    }
+
+* Cập nhật Avatar:
+  - Method: POST
+  - URL: /api/auth/profile/avatar
+  - Request Body (form-data):
+    - avatar: [File Image (jpg, png, max 2MB)]
+
+* Đổi mật khẩu:
+  - Method: PUT
+  - URL: /api/auth/change-password
+  - Request Body (JSON):
+    {
+      "current_password": "password_cu",
+      "new_password": "password_moi_123",
+      "new_password_confirmation": "password_moi_123"
+    }
+
+
+2. QUẢN LÝ ĐẶT PHÒNG & THANH TOÁN
+-----------------------------------------------------------
+
+* Xem tất cả lịch sử đặt phòng:
+  - Method: GET
+  - URL: /api/my-bookings
+  - Mô tả: Danh sách tất cả các đơn đặt phòng của user (phân trang).
+
+* Xem lịch sử thanh toán:
+  - Method: GET
+  - URL: /api/payment-history
+  - Mô tả: Trả về danh sách các booking đã thanh toán (payment_status = 'paid') 
+    hoặc đã hoàn tiền ('refunded').
+
+* Xem phòng chưa thanh toán & đang giữ chỗ:
+  - Method: GET
+  - URL: /api/unpaid-bookings
+  - Mô tả: Trả về danh sách các phòng có trạng thái thanh toán là 'unpaid' 
+    và trạng thái booking là 'pending' hoặc 'confirmed'.
+
+
+3. CÁC API HỖ TRỢ KHÁC
+-----------------------------------------------------------
+
+* Đăng xuất:
+  - Method: POST
+  - URL: /api/auth/logout
+
+* Hủy đặt phòng:
+  - Method: PUT
+  - URL: /api/bookings/{id}/cancel
+  - Mô tả: Cho phép user tự hủy phòng khi chưa check-in/hoàn thành.
