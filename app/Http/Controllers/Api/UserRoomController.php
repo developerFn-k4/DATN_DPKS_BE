@@ -8,16 +8,11 @@ use App\Models\Room;
 class UserRoomController extends Controller
 {
     /**
-     * =====================================================
-     * Danh sách phòng (kèm loại phòng + ảnh)
-     * =====================================================
+     * Danh sách phòng
      */
     public function index()
     {
-        $rooms = Room::with([
-            'roomType',
-            'images'
-        ])
+        $rooms = Room::with(['roomType', 'images'])
             ->where('status', 'available')
             ->latest()
             ->get();
@@ -30,9 +25,7 @@ class UserRoomController extends Controller
 
 
     /**
-     * =====================================================
      * Chi tiết phòng
-     * =====================================================
      */
     public function show(Room $room)
     {
@@ -40,31 +33,10 @@ class UserRoomController extends Controller
             'roomType',
             'images',
             'reviews.user'
-        ]);
+        ])->loadAvg('reviews', 'overall_score')
+            ->loadCount('reviews');
 
-        $reviews = $room->reviews;
-
-        /**
-         * Rating summary
-         */
-        $ratingSummary = [
-            'cleanliness' => round($reviews->avg('cleanliness'), 1),
-            'comfort' => round($reviews->avg('comfort'), 1),
-            'location' => round($reviews->avg('location'), 1),
-            'service' => round($reviews->avg('service'), 1),
-            'value' => round($reviews->avg('value'), 1),
-            'wifi' => round($reviews->avg('wifi'), 1),
-            'overall' => round($reviews->avg('overall_score'), 1),
-            'total_reviews' => $reviews->count()
-        ];
-
-        /**
-         * Lấy 4 phòng cùng loại
-         */
-        $relatedRooms = Room::with([
-            'roomType',
-            'images'
-        ])
+        $relatedRooms = Room::with(['roomType', 'images'])
             ->where('room_type_id', $room->room_type_id)
             ->where('id', '!=', $room->id)
             ->where('status', 'available')
@@ -75,8 +47,6 @@ class UserRoomController extends Controller
         return response()->json([
             'success' => true,
             'room' => $room,
-            'rating_summary' => $ratingSummary,
-            'reviews' => $reviews,
             'related_rooms' => $relatedRooms
         ]);
     }

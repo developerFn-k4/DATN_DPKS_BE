@@ -14,13 +14,9 @@ class CancelExpiredBookings extends Command
 
     public function handle()
     {
+        DB::transaction(function () {
 
-        DB::beginTransaction();
-
-        try {
-
-            $bookings = Booking::with('room')
-                ->where('status', 'pending')
+            $bookings = Booking::where('status', 'pending')
                 ->whereNotNull('expired_at')
                 ->where('expired_at', '<=', now())
                 ->lockForUpdate()
@@ -28,24 +24,12 @@ class CancelExpiredBookings extends Command
 
             foreach ($bookings as $booking) {
 
-                $booking->status = 'cancelled';
-                $booking->save();
-
-                if ($booking->room) {
-
-                    $booking->room->status = 'available';
-                    $booking->room->save();
-                }
+                $booking->update([
+                    'status' => 'cancelled'
+                ]);
             }
+        });
 
-            DB::commit();
-
-            $this->info('Expired bookings cancelled');
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            $this->error($e->getMessage());
-        }
+        $this->info('Expired bookings cancelled successfully.');
     }
 }

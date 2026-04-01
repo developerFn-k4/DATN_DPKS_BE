@@ -4,10 +4,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminRoomTypeController;
 use App\Http\Controllers\Admin\AdminRoomController;
 use App\Http\Controllers\Admin\AdminRoomTypeImageController;
-use App\Http\Controllers\Admin\AdminRImageController;
+
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +28,14 @@ Route::middleware(['auth:sanctum', 'admin'])
         */
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
+        
+        // chuyển trạng thái user
+        Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
+        // thống kê user
+        Route::get('users/stats', [AdminUserController::class, 'stats']);
+        Route::get('users/chart', [AdminUserController::class, 'chart']);
+        Route::get('users/top', [AdminUserController::class, 'topUsers']); // nếu có booking
+
         /*
         |--------------------------------------------------------------------------
         | USERS
@@ -43,32 +53,27 @@ Route::middleware(['auth:sanctum', 'admin'])
 
         Route::apiResource('room-types', AdminRoomTypeController::class);
 
-
+        Route::put('room-types/{id}/restore', [AdminRoomTypeController::class, 'restore']);
         /*
         |--------------------------------------------------------------------------
         | ROOM TYPE IMAGES
         |--------------------------------------------------------------------------
         */
-
         // thêm ảnh cho loại phòng
         Route::post(
             '/room-types/{roomType}/images',
             [AdminRoomTypeImageController::class, 'store']
         );
-
         // cập nhật ảnh loại phòng
         Route::put(
             '/room-type-images/{roomImage}',
             [AdminRoomTypeImageController::class, 'update']
         );
-
         // xoá ảnh loại phòng
         Route::delete(
             '/room-type-images/{roomImage}',
             [AdminRoomTypeImageController::class, 'destroy']
         );
-
-
         /*
         |--------------------------------------------------------------------------
         | ROOMS
@@ -79,62 +84,31 @@ Route::middleware(['auth:sanctum', 'admin'])
         Route::put('rooms/{id}/restore', [AdminRoomController::class, 'restore']);
         /*
         |--------------------------------------------------------------------------
-        | ROOM IMAGES
+        | BOOKINGS
         |--------------------------------------------------------------------------
         */
+        Route::get('/search', [AdminBookingController::class, 'search']);
 
-        // thêm ảnh cho phòng
-        Route::post(
-            'rooms/{room}/images',
-            [AdminRImageController::class, 'store']
-        );
+        Route::post('/calculate-price', [AdminBookingController::class, 'calculatePrice']);
 
-        // cập nhật ảnh phòng
-        Route::put(
-            'room-images/{id}',
-            [AdminRImageController::class, 'update']
-        );
+        Route::post('/booking', [AdminBookingController::class, 'store']);
 
-        // xoá ảnh phòng
-        Route::delete(
-            'room-images/{id}',
-            [AdminRImageController::class, 'destroy']
-        );
+        Route::post('/payment/momo/{booking}', [AdminBookingController::class, 'momoPayment']);
+
+        Route::post('/payment/webhook', [AdminBookingController::class, 'momoWebhook']);
+
+        Route::post('/booking/{id}/cancel', [AdminBookingController::class, 'cancel']);
 
 
         /*
         |--------------------------------------------------------------------------
-        | BOOKINGS
+        | Review
         |--------------------------------------------------------------------------
         */
 
-        // danh sách booking
-        Route::get(
-            '/bookings',
-            [AdminBookingController::class, 'index']
-        );
+        Route::get('/reviews', [AdminReviewController::class, 'index']);
 
-        // xác nhận booking
-        Route::put(
-            '/bookings/{id}/confirm',
-            [AdminBookingController::class, 'confirm']
-        );
+        Route::get('/reviews/{id}', [AdminReviewController::class, 'show']);
 
-        // check-in
-        Route::put(
-            '/bookings/{id}/checkin',
-            [AdminBookingController::class, 'checkIn']
-        );
-
-        // checkout
-        Route::put(
-            '/bookings/{id}/checkout',
-            [AdminBookingController::class, 'complete']
-        );
-
-        // hủy booking
-        Route::put(
-            '/bookings/{id}/cancel',
-            [AdminBookingController::class, 'cancel']
-        );
+        Route::delete('/reviews/{id}', [AdminReviewController::class, 'destroy']);
     });

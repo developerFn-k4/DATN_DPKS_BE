@@ -5,127 +5,328 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\RoomType;
+use App\Models\RoomImage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class AdminRoomTypeController extends Controller
 {
+
     /**
-     * GET /api/admin/room-types
-     * Lấy danh sách loại phòng
+     * DANH SÁCH ROOM TYPE
      */
     public function index()
     {
-        $roomTypes = RoomType::with('hotel', 'images')
+        $roomTypes = RoomType::with('images')
             ->orderBy('id', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($roomType) {
+
+                return [
+                    'id' => $roomType->id,
+                    'hotel_id' => $roomType->hotel_id,
+                    'name' => $roomType->name,
+                    'capacity' => $roomType->capacity,
+                    'bed_type' => $roomType->bed_type,
+                    'area' => $roomType->area,
+                    'amenities' => $roomType->amenities ? json_decode($roomType->amenities) : [],
+                    'base_price' => $roomType->base_price,
+                    'currency' => $roomType->currency,
+                    'status' => $roomType->status,
+                    'created_at' => $roomType->created_at,
+                    'updated_at' => $roomType->updated_at,
+
+                    'images' => $roomType->images->map(function ($image) {
+                        return [
+                            'id' => $image->id,
+                            'image_url' => asset('storage/' . $image->image_url)
+                        ];
+                    })
+                ];
+            });
 
         return response()->json([
-            'success' => true,
             'data' => $roomTypes
         ]);
     }
 
+
     /**
-     * GET /api/admin/room-types/{id}
-     * Xem chi tiết 1 loại phòng
+     * CHI TIẾT ROOM TYPE
      */
     public function show($id)
     {
-        $roomType = RoomType::with('hotel', 'images', 'rooms')
-            ->find($id);
-
-        if (!$roomType) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy loại phòng'
-            ], 404);
-        }
+        $roomType = RoomType::with('images')->findOrFail($id);
 
         return response()->json([
-            'success' => true,
             'data' => $roomType
         ]);
     }
 
     /**
-     * POST /api/admin/room-types
-     * Tạo loại phòng mới
+     * THÊM ROOM TYPE
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'hotel_id' => 'required|exists:hotels,id',
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'capacity' => 'required|integer|min:1',
-            'bed_type' => 'required|string|max:100',
-            'base_price' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:10',
-            'status' => 'required|in:active,inactive',
+            'capacity' => 'required|integer',
+            'bed_type' => 'required|string|max:255',
+            'area' => 'required|integer',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'string',
+            'base_price' => 'required|numeric',
+            'currency' => 'required|string|max:3',
+            'status' => 'nullable|in:active,inactive',
+
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048'
         ]);
 
-        $roomType = RoomType::create($validated);
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tạo loại phòng thành công',
-            'data' => $roomType
-        ], 201);
+        try {
+
+            $roomType = RoomType::create([
+                'hotel_id' => $request->hotel_id,
+                'name' => $request->name,
+                'capacity' => $request->capacity,
+                'bed_type' => $request->bed_type,
+                'area' => $request->area,
+                'amenities' => $request->amenities ? json_encode($request->amenities) : null,
+                'base_price' => $request->base_price,
+                'currency' => $request->currency,
+                'status' => $request->status ?? 'active'
+            ]);
+
+            /**
+             * Upload ảnh
+             */
+            if ($request->hasFile('images')) {
+
+                foreach ($request->file('images') as $image) {
+
+                    $path = $image->store('room_types', 'public');
+
+                    RoomImage::create([
+                        'room_type_id' => $roomType->id,
+                        'image_url' => $path
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Tạo loại phòng thành công',
+                'data' => $roomType->load('images')
+            ], 201);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Tạo loại phòng thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-
     /**
-     * PUT /api/admin/room-types/{id}
-     * Cập nhật loại phòng
+     * UPDATE ROOM TYPE - Đã fix lỗi 500 và tối ưu response
      */
     public function update(Request $request, $id)
     {
-        $roomType = RoomType::find($id);
-
-        if (!$roomType) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy loại phòng'
-            ], 404);
-        }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'capacity' => 'sometimes|integer|min:1',
-            'bed_type' => 'sometimes|string|max:100',
-            'base_price' => 'sometimes|numeric|min:0',
-            'currency' => 'sometimes|string|max:10',
-            'status' => 'sometimes|in:active,inactive',
+        // 1. Validate dữ liệu đầu vào
+        $request->validate([
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'keep_images' => 'nullable|array'
         ]);
 
-        $roomType->update($validated);
+        $roomType = RoomType::with('images')->findOrFail($id);
+
+        DB::beginTransaction();
+
+        try {
+            // 2. Cập nhật thông tin cơ bản
+            $roomType->update([
+                'hotel_id'   => $request->hotel_id ?? $roomType->hotel_id,
+                'name'       => $request->name ?? $roomType->name,
+                'capacity'   => (int)($request->capacity ?? $roomType->capacity),
+                'bed_type'   => $request->bed_type ?? $roomType->bed_type,
+                'area'       => $request->area ?? $roomType->area,
+                'amenities'  => $request->amenities ?? $roomType->amenities,
+                'base_price' => $request->base_price ?? $roomType->base_price,
+                'currency'   => $request->currency ?? $roomType->currency,
+                'status'     => $request->status ?? $roomType->status,
+            ]);
+
+            // 3. XỬ LÝ XÓA ẢNH (Dựa trên keep_images)
+            if ($request->has('keep_images')) {
+                $keepImages = $request->keep_images;
+
+                // Đảm bảo là mảng để xử lý
+                if (!is_array($keepImages)) {
+                    $keepImages = explode(',', $keepImages);
+                }
+
+                // Lấy danh sách ảnh cũ KHÔNG nằm trong danh sách giữ lại
+                $imagesToDelete = $roomType->images->whereNotIn('id', $keepImages);
+
+                foreach ($imagesToDelete as $img) {
+                    if (Storage::disk('public')->exists($img->image_url)) {
+                        Storage::disk('public')->delete($img->image_url);
+                    }
+                    $img->delete();
+                }
+            }
+
+            // 4. UPLOAD ẢNH MỚI
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('room_types', 'public');
+                    RoomImage::create([
+                        'room_type_id' => $roomType->id,
+                        'image_url'    => $path
+                    ]);
+                }
+            }
+
+            $roomType->load('images');
+            DB::commit();
+
+            // 5. CHUẨN BỊ RESPONSE (Đã fix lỗi json_decode)
+            $amenitiesData = $roomType->amenities;
+
+            // Nếu là chuỗi JSON thì mới decode, nếu đã là mảng rồi thì giữ nguyên
+            if (is_string($amenitiesData)) {
+                $amenitiesData = json_decode($amenitiesData, true);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Cập nhật loại phòng thành công',
+                'data' => [
+                    'room_type_id' => $roomType->id, // Trả về đúng ID để FE nhận diện
+                    'hotel_id'     => $roomType->hotel_id,
+                    'name'         => $roomType->name,
+                    'capacity'     => (int)$roomType->capacity,
+                    'bed_type'     => $roomType->bed_type,
+                    'area'         => $roomType->area,
+                    'amenities'    => is_array($amenitiesData) ? $amenitiesData : [],
+                    'base_price'   => $roomType->base_price,
+                    'currency'     => $roomType->currency,
+                    'status'       => $roomType->status,
+                    'images'       => $roomType->images->map(fn($img) => [
+                        'id' => $img->id,
+                        'image_url' => $img->image_url, // Gửi về URL gốc để FE dễ xử lý
+                        'url' => asset('storage/' . $img->image_url)
+                    ])
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cập nhật thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    /**
+     * XÓA 1 ẢNH
+     */
+    public function deleteImage($id)
+    {
+        $image = RoomImage::findOrFail($id);
+
+        if (Storage::disk('public')->exists($image->image_url)) {
+            Storage::disk('public')->delete($image->image_url);
+        }
+
+        $image->delete();
 
         return response()->json([
-            'success' => true,
-            'message' => 'Cập nhật thành công',
-            'data' => $roomType
+            'message' => 'Xóa ảnh thành công'
         ]);
     }
 
+
+
     /**
-     * DELETE /api/admin/room-types/{id}
-     * Xóa loại phòng
+     * XOÁ ROOM TYPE
      */
     public function destroy($id)
     {
-        $roomType = RoomType::find($id);
+        $roomType = RoomType::with('images')->findOrFail($id);
 
-        if (!$roomType) {
+        DB::beginTransaction();
+
+        try {
+            // Xóa tất cả ảnh liên quan
+            $roomType->images->each(function ($image) {
+                if (Storage::disk('public')->exists($image->image_url)) {
+                    Storage::disk('public')->delete($image->image_url);
+                }
+                $image->delete();
+            });
+
+            // Xóa room type
+            $roomType->delete();
+
+            DB::commit();
+
             return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy loại phòng'
-            ], 404);
+                'message' => 'Xóa loại phòng thành công'
+            ], 200);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Xóa thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * KHÔI PHỤC ROOM TYPE ĐÃ XÓA
+     */
+    public function restore($id)
+    {
+        // Tìm cả những record đã xóa
+        $roomType = RoomType::withTrashed()->findOrFail($id);
+
+        if (!$roomType->trashed()) {
+            return response()->json([
+                'message' => 'Phòng này chưa bị xóa, không cần khôi phục.'
+            ], 400);
         }
 
-        $roomType->delete();
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Xóa loại phòng thành công'
-        ]);
+        try {
+            $roomType->restore(); // khôi phục soft delete
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Khôi phục loại phòng thành công',
+                'data' => $roomType->load('images')
+            ], 200);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Khôi phục thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
