@@ -17,6 +17,9 @@ use App\Http\Controllers\Admin\AdminUserController;
 |--------------------------------------------------------------------------
 */
 
+
+Route::get('vnpay/pay/{orderId}', [AdminBookingController::class, 'vnpayPay'])->name('vnpay.pay');
+Route::post('vnpay/webhook', [AdminBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::middleware(['auth:sanctum', 'admin'])
     ->prefix('admin')
     ->group(function () {
@@ -87,17 +90,13 @@ Route::middleware(['auth:sanctum', 'admin'])
         | BOOKINGS
         |--------------------------------------------------------------------------
         */
-        Route::get('/search', [AdminBookingController::class, 'search']);
-
-        Route::post('/calculate-price', [AdminBookingController::class, 'calculatePrice']);
-
+        Route::post('search', [AdminBookingController::class, 'search']);
+        Route::post('calculate-price', [AdminBookingController::class, 'calculatePrice']);
         Route::post('/booking', [AdminBookingController::class, 'store']);
+        Route::post('{id}/cancel', [AdminBookingController::class, 'cancel']);
 
-        Route::post('/payment/momo/{booking}', [AdminBookingController::class, 'momoPayment']);
+        Route::post('auto-cancel', [AdminBookingController::class, 'autoCancel']);
 
-        Route::post('/payment/webhook', [AdminBookingController::class, 'momoWebhook']);
-
-        Route::post('/booking/{id}/cancel', [AdminBookingController::class, 'cancel']);
 
 
         /*
