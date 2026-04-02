@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
+use App\Jobs\CancelBookingJob;
 
 class AdminBookingController extends Controller
 {
@@ -95,12 +96,13 @@ class AdminBookingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'email' => 'required|email',
             'phone' => 'required',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'rooms' => 'required|array'
+            'rooms' => 'required|array',
+            'services' => 'nullable|array'
         ]);
 
         DB::beginTransaction();
@@ -110,15 +112,9 @@ class AdminBookingController extends Controller
             $checkOut = Carbon::parse($request->check_out);
             $nights = $checkIn->diffInDays($checkOut);
 
-            // Tính tổng khách
-            $totalGuests = 0;
-            foreach ($request->rooms as $room) {
-                $totalGuests += ($room['adults'] ?? 0) + ($room['children'] ?? 0);
-            }
+            $totalGuests = collect($request->rooms)->sum(fn($room) => ($room['adults'] ?? 0) + ($room['children'] ?? 0));
 
-            $total = 0;
-
-            // 1. Tạo booking chính
+            // 1. Tạo Booking ban đầu
             $booking = Booking::create([
                 'booking_code' => 'BK-' . strtoupper(Str::random(6)),
                 'user_id' => Auth::id(),
@@ -130,10 +126,13 @@ class AdminBookingController extends Controller
                 'nights' => $nights,
                 'guests' => $totalGuests,
                 'status' => 'pending',
-                'expired_at' => now()->addMinutes(10)
+                'expired_at' => now()->addMinutes(2)
             ]);
 
-            // 2. Gán phòng
+            $subTotal = 0;
+            $roomInfo = [];
+
+            // 2. Xử lý phòng
             foreach ($request->rooms as $roomData) {
                 $roomType = RoomType::findOrFail($roomData['room_type_id']);
                 $quantity = $roomData['quantity'] ?? 1;
@@ -142,69 +141,92 @@ class AdminBookingController extends Controller
                     ->where('status', 'available')
                     ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
                         $q->where('check_in', '<', $checkOut)
-                            ->where('check_out', '>', $checkIn);
+                            ->where('check_out', '>', $checkIn)
+                            ->whereIn('status', ['pending', 'confirmed']);
                     })
                     ->lockForUpdate()
                     ->take($quantity)
                     ->get();
 
                 if ($availableRooms->count() < $quantity) {
-                    throw new \Exception("Không đủ phòng trống cho loại: {$roomType->name}");
+                    throw new \Exception("Phòng {$roomType->name} không còn đủ chỗ.");
                 }
 
                 foreach ($availableRooms as $room) {
+                    $price = $roomType->base_price * $nights;
                     BookingRoom::create([
                         'booking_id' => $booking->id,
                         'room_id' => $room->id,
                         'room_type_id' => $roomType->id,
                         'quantity' => 1,
-                        'price' => $roomType->base_price * $nights
+                        'price' => $price
                     ]);
 
-                    $total += $roomType->base_price * $nights;
-
+                    $subTotal += $price;
+                    $roomInfo[] = ['name' => $roomType->name, 'price' => $price];
                     $room->update(['status' => 'occupied']);
                 }
             }
 
-            // 3. Ghi dịch vụ nếu có
-            if (!empty($request->services) && is_array($request->services)) {
-                foreach ($request->services as $serviceData) {
-                    $service = Service::findOrFail($serviceData['service_id']);
-                    $quantity = $serviceData['quantity'] ?? 1;
-                    $price = $service->price * $quantity;
+            // 3. Xử lý dịch vụ
+            $serviceInfo = [];
+            if ($request->has('services')) {
+                foreach ($request->services as $sData) {
+                    $service = Service::findOrFail($sData['service_id']);
+                    $sQty = $sData['quantity'] ?? 1;
+                    $sPrice = $service->price * $sQty;
 
                     BookingService::create([
                         'booking_id' => $booking->id,
                         'service_id' => $service->id,
-                        'quantity' => $quantity,
-                        'price' => $price
+                        'quantity' => $sQty,
+                        'price' => $sPrice
                     ]);
-
-                    $total += $price;
+                    $subTotal += $sPrice;
+                    $serviceInfo[] = ['name' => $service->name, 'quantity' => $sQty, 'price' => $sPrice];
                 }
             }
 
-            // 4. Cập nhật tổng tiền
-            $booking->update(['total_price' => $total]);
+            // 4. Tính toán tài chính (Thuế 5%)
+            $tax = $subTotal * 0.05;
+            $totalAfterTax = $subTotal + $tax;
+            $booking->update(['total_price' => $totalAfterTax]);
 
-            // 5. Tạo payment VNPay
+            // 5. Tạo Payment
             $payment = Payment::create([
                 'booking_id' => $booking->id,
-                'order_id' => Str::uuid(),
-                'request_id' => Str::uuid(),
-                'amount' => $total,
+                'order_id' => (string) Str::uuid(),
+                'request_id' => (string) Str::uuid(),
+                'amount' => $totalAfterTax,
                 'method' => 'vnpay',
                 'status' => 'pending'
             ]);
 
             DB::commit();
 
+            // Dispatch Job tự động hủy sau 2 phút
+            \App\Jobs\CancelBookingJob::dispatch($booking->id)->delay(now()->addMinutes(2));
+
+            // 6. Trả về thông tin đầy đủ cho hóa đơn cuối cùng
             return response()->json([
-                'booking_id' => $booking->id,
-                'booking_code' => $booking->booking_code,
-                'total' => $total,
-                'payment_url' => route('vnpay.pay', $payment->order_id)
+                'status' => 'success',
+                'data' => [
+                    'booking_code' => $booking->booking_code,
+                    'customer' => ['name' => $booking->name, 'phone' => $booking->phone],
+                    'details' => [
+                        'check_in' => $booking->check_in->format('d-m-Y'),
+                        'check_out' => $booking->check_out->format('d-m-Y'),
+                        'nights' => $nights,
+                        'rooms' => $roomInfo,
+                        'services' => $serviceInfo,
+                    ],
+                    'finance' => [
+                        'sub_total' => $subTotal,
+                        'tax_5' => $tax,
+                        'total_final' => $totalAfterTax
+                    ],
+                    'payment_url' => route('vnpay.pay', $payment->order_id)
+                ]
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -351,16 +373,24 @@ class AdminBookingController extends Controller
     | CRON AUTO CANCEL
     |--------------------------------------------------------------------------
     */
-    public function autoCancel()
+    public function createBooking(Request $request)
     {
-        $bookings = Booking::where('status', 'pending')
-            ->where('expired_at', '<', now())
-            ->get();
+        $booking = Booking::create([
+            'user_id' => $request->user_id,
+            'room_id' => $request->room_id,
+            'status' => 'pending',
+            'expired_at' => Carbon::now()->addMinutes(2) // giữ phòng 2 phút
+        ]);
 
-        foreach ($bookings as $booking) {
-            $booking->update(['status' => 'cancelled']);
+        // phòng sẽ giữ trạng thái 'occupied' khi tạo booking
+        $room = Room::find($request->room_id);
+        if ($room) {
+            $room->update(['status' => 'occupied']);
         }
 
-        return "Auto cancel done";
+        return response()->json([
+            'message' => 'Booking created. Please pay within 2 minutes.',
+            'booking' => $booking
+        ]);
     }
 }
