@@ -300,4 +300,5 @@ class AdminUserController extends Controller
             'data' => $topUsers
         ]);
     }
+    
 }
