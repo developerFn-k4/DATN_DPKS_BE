@@ -80,6 +80,45 @@ class PaymentController extends Controller
             "payment_url" => $paymentUrl
         ]);
     }
+    public function history(Request $request)
+    {
+        $payments = Payment::with(['booking.room.roomType'])
+            ->whereHas('booking', function ($q) use ($request) {
+                $q->where('user_id', $request->user()->id);
+            })
+            ->latest()
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id'           => $payment->id,
+                    'order_id'     => $payment->order_id,
+                    'amount'       => $payment->amount,
+                    'method'       => $payment->method,
+                    'status'       => $payment->status,
+                    'paid_at'      => $payment->updated_at,
+                    'booking'      => [
+                        'id'           => $payment->booking->id,
+                        'booking_code' => $payment->booking->booking_code,
+                        'check_in'     => $payment->booking->check_in,
+                        'check_out'    => $payment->booking->check_out,
+                        'nights'       => $payment->booking->nights,
+                        'total_price'  => $payment->booking->total_price,
+                        'status'       => $payment->booking->status,
+                        'room'         => $payment->booking->room ? [
+                            'id'        => $payment->booking->room->id,
+                            'name'      => $payment->booking->room->name,
+                            'room_type' => $payment->booking->room->roomType?->name,
+                        ] : null,
+                    ],
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $payments,
+        ]);
+    }
+
     public function vnpayReturn(Request $request)
     {
         $vnp_HashSecret = env('VNPAY_HASH_SECRET');
