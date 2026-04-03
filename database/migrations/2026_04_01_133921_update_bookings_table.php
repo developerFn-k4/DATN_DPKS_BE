@@ -27,8 +27,6 @@ return new class extends Migration
             ])->default('website')->after('status');
 
             $table->text('special_request')->nullable()->after('guests');
-
-            $table->timestamp('paid_at')->nullable()->after('expired_at');
         });
     }
 
@@ -47,8 +45,7 @@ return new class extends Migration
                 'booking_code',
                 'nights',
                 'source',
-                'special_request',
-                'paid_at'
+                'special_request'
             ]);
         });
     }

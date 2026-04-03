@@ -45,7 +45,7 @@ Route::prefix('auth')->group(function () {
 
         Route::prefix('profile')->group(function () {
             Route::get('/', [UserProfileController::class, 'show'])->name('api.auth.profile.show');
-            Route::put('/', [UserProfileController::class, 'update'])->name('api.auth.profile.update');
+            Route::put('/update', [UserProfileController::class, 'update'])->name('api.auth.profile.update');
             Route::post('/avatar', [UserProfileController::class, 'updateAvatar'])->name('api.auth.profile.avatar');
         });
 
@@ -67,11 +67,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/services', [UserBookingController::class, 'services'])->name('api.services');
     Route::post('/bookings', [UserBookingController::class, 'store'])->name('api.bookings.store');
     Route::get('/my-bookings', [UserBookingController::class, 'myBookings'])->name('api.bookings.index');
+    Route::get('/unpaid-bookings', [UserBookingController::class, 'unpaidBookings'])->name('api.bookings.unpaid');
     Route::put('/bookings/{id}/cancel', [UserBookingController::class, 'cancel'])->name('api.bookings.cancel');
 
     Route::post('/reviews', [UserReviewController::class, 'store'])->name('api.reviews.store');
     Route::put('/reviews/{review}', [UserReviewController::class, 'update'])->name('api.reviews.update');
     Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy'])->name('api.reviews.destroy');
+
+    Route::get('/payment-history', [PaymentController::class, 'history'])->name('api.payment.history');
 
     Route::prefix('payment')->group(function () {
         Route::post('/vnpay/{bookingId}', [PaymentController::class, 'createVnpay'])->name('api.payment.vnpay');
