@@ -22,34 +22,6 @@ class AdminBookingController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
-    | SEARCH AVAILABLE ROOM
-    |--------------------------------------------------------------------------
-    */
-    public function search(Request $request)
-    {
-        $request->validate([
-            'check_in' => 'required|date',
-            'check_out' => 'required|date|after:check_in'
-        ]);
-
-        $checkIn = Carbon::parse($request->check_in);
-        $checkOut = Carbon::parse($request->check_out);
-
-        $roomTypes = RoomType::withCount(['rooms as available_rooms' => function ($query) use ($checkIn, $checkOut) {
-            $query->where('status', 'available')
-                ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
-                    $q->where(function ($q2) use ($checkIn, $checkOut) {
-                        $q2->where('check_in', '<', $checkOut)
-                            ->where('check_out', '>', $checkIn);
-                    });
-                });
-        }])->get();
-
-        return response()->json($roomTypes);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | REALTIME PRICE
     |--------------------------------------------------------------------------
     */

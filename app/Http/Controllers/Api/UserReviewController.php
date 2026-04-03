@@ -12,11 +12,10 @@ class UserReviewController extends Controller
 {
 
     /**
-     * Tạo review
+     * Tạo review cho LOẠI PHÒNG
      */
     public function store(Request $request)
     {
-
         $data = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
             'cleanliness' => 'required|integer|min:1|max:5',
@@ -28,7 +27,8 @@ class UserReviewController extends Controller
             'comment' => 'nullable|string'
         ]);
 
-        $booking = Booking::findOrFail($data['booking_id']);
+        $booking = Booking::with('bookingRooms.room.roomType')
+            ->findOrFail($data['booking_id']);
 
         /**
          * Check user sở hữu booking
@@ -38,15 +38,6 @@ class UserReviewController extends Controller
                 'message' => 'Không có quyền review'
             ], 403);
         }
-
-        // /**
-        //  * Chỉ booking completed mới review
-        //  */
-        // if ($booking->status !== 'completed') {
-        //     return response()->json([
-        //         'message' => 'Bạn chưa hoàn thành trải nghiệm phòng'
-        //     ], 422);
-        // }
 
         /**
          * Booking chỉ review 1 lần
@@ -59,6 +50,14 @@ class UserReviewController extends Controller
             ], 422);
         }
 
+        /**
+         * Lấy room_type_id từ booking
+         */
+        $roomTypeId = $booking->bookingRooms->first()->room->room_type_id;
+
+        /**
+         * Tính overall
+         */
         $overall = (
             $data['cleanliness'] +
             $data['comfort'] +
@@ -69,15 +68,17 @@ class UserReviewController extends Controller
         ) / 6;
 
         $review = Review::create([
-            'room_id' => $booking->room_id,
+            'room_type_id' => $roomTypeId,
             'user_id' => Auth::id(),
             'booking_id' => $booking->id,
+
             'cleanliness' => $data['cleanliness'],
             'comfort' => $data['comfort'],
             'location' => $data['location'],
             'service' => $data['service'],
             'value' => $data['value'],
             'wifi' => $data['wifi'],
+
             'overall_score' => $overall,
             'comment' => $data['comment']
         ]);
@@ -90,14 +91,11 @@ class UserReviewController extends Controller
 
 
     /**
-     * sửa review
+     * Sửa review
      */
     public function update(Request $request, Review $review)
     {
 
-        /**
-         * Check quyền
-         */
         if ($review->user_id !== Auth::id()) {
             return response()->json([
                 'message' => 'Không có quyền sửa review'
@@ -114,9 +112,6 @@ class UserReviewController extends Controller
             'comment' => 'nullable|string'
         ]);
 
-        /**
-         * Tính lại overall
-         */
         $overall = (
             $data['cleanliness'] +
             $data['comfort'] +
@@ -143,15 +138,13 @@ class UserReviewController extends Controller
         ]);
     }
 
+
     /**
-     * xóa review
+     * Xóa review
      */
     public function destroy(Review $review)
     {
 
-        /**
-         * Check quyền
-         */
         if ($review->user_id !== Auth::id()) {
             return response()->json([
                 'message' => 'Không có quyền xóa review'
