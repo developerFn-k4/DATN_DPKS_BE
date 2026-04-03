@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminServiceController;
 
 
 /*
@@ -111,4 +112,11 @@ Route::middleware(['auth:sanctum', 'admin'])
         Route::get('/reviews/{id}', [AdminReviewController::class, 'show']);
 
         Route::delete('/reviews/{id}', [AdminReviewController::class, 'destroy']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SERVICES
+        |--------------------------------------------------------------------------
+        */
+        Route::apiResource('services', AdminServiceController::class);
     });
