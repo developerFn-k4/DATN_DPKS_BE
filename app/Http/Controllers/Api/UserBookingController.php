@@ -3,225 +3,276 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
-use App\Models\BookingRoom;
+use Illuminate\Http\Request;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\Service;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\BookingService;
+use App\Models\Payment;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class UserBookingController extends Controller
 {
 
-    /**
-     * =====================================================
-     * DANH SÁCH PHÒNG TRỐNG
-     * =====================================================
-     */
-    public function availableRooms(Request $request)
-    {
-
-        $request->validate([
-            'check_in' => 'required|date',
-            'check_out' => 'required|date|after:check_in',
-            'adults' => 'required|integer|min:1',
-            'children_ages' => 'nullable|array'
-        ]);
-
-        $checkIn = Carbon::parse($request->check_in);
-        $checkOut = Carbon::parse($request->check_out);
-
-        /**
-         * COUNT PEOPLE
-         */
-        $adults = $request->adults;
-
-        $childrenAges = $request->children_ages ?? [];
-
-        $childrenAsAdults = collect($childrenAges)
-            ->filter(fn($age) => $age >= 10)
-            ->count();
-
-        $totalGuests = $adults + $childrenAsAdults;
-
-        /**
-         * FIND ROOM TYPES
-         */
-        $roomTypes = RoomType::where('capacity', '>=', $totalGuests)
-            ->with(['rooms', 'images'])
-            ->get();
-
-        $availableRooms = [];
-
-        foreach ($roomTypes as $roomType) {
-
-            /**
-             * CHECK BOOKED ROOMS
-             */
-            $bookedRooms = BookingRoom::whereHas('booking', function ($q) use ($checkIn, $checkOut) {
-
-                $q->where('status', 'confirmed')
-                    ->where(function ($query) use ($checkIn, $checkOut) {
-
-                        $query->whereBetween('check_in', [$checkIn, $checkOut])
-                            ->orWhereBetween('check_out', [$checkIn, $checkOut])
-                            ->orWhere(function ($q2) use ($checkIn, $checkOut) {
-                                $q2->where('check_in', '<=', $checkIn)
-                                    ->where('check_out', '>=', $checkOut);
-                            });
-                    });
-            })
-                ->where('room_type_id', $roomType->id)
-                ->sum('quantity');
-
-
-            /**
-             * TOTAL ROOMS
-             */
-            $totalRooms = $roomType->rooms->count();
-
-            $remaining = $totalRooms - $bookedRooms;
-
-            if ($remaining > 0) {
-
-                $availableRooms[] = [
-
-                    'room_type_id' => $roomType->id,
-                    'name' => $roomType->name,
-                    'capacity' => $roomType->capacity,
-                    'price' => $roomType->price,
-                    'available_rooms' => $remaining,
-                    'images' => $roomType->images
-                ];
-            }
-        }
-
-        return response()->json([
-            'guests' => $totalGuests,
-            'check_in' => $checkIn,
-            'check_out' => $checkOut,
-            'rooms' => $availableRooms
-        ]);
-    }
-    /**
-     * CALCULATE PRICE
-     */
+    /*
+    |-----------------------------------------------------------
+    | REALTIME PRICE
+    |-----------------------------------------------------------
+    */
     public function calculatePrice(Request $request)
     {
         $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
             'rooms' => 'required|array',
-            'rooms.*.room_type_id' => 'required|exists:room_types,id',
-            'rooms.*.quantity' => 'required|integer|min:1',
             'services' => 'nullable|array'
         ]);
 
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
-
         $nights = $checkIn->diffInDays($checkOut);
 
         $total = 0;
+
         $roomDetails = [];
         $serviceDetails = [];
 
-        /**
-         * ROOM PRICE
-         */
+        /*
+    |-----------------------------------------------------------
+    | TÍNH TIỀN PHÒNG
+    |-----------------------------------------------------------
+    */
         foreach ($request->rooms as $room) {
 
             $roomType = RoomType::findOrFail($room['room_type_id']);
 
-            $price = $roomType->price * $room['quantity'] * $nights;
+            $quantity = $room['quantity'] ?? 1;
 
-            $total += $price;
+            $price = $roomType->base_price * $quantity * $nights;
 
             $roomDetails[] = [
-                'room_type_id' => $roomType->id,
-                'name' => $roomType->name,
-                'quantity' => $room['quantity'],
-                'price' => $price
+                'room_type' => $roomType->name,
+                'quantity' => $quantity,
+                'price_per_night' => $roomType->base_price,
+                'nights' => $nights,
+                'total' => $price
             ];
-        }
-
-        /**
-         * SERVICE PRICE
-         */
-        foreach ($request->services ?? [] as $service) {
-
-            $serviceModel = Service::findOrFail($service['service_id']);
-
-            $price = $serviceModel->price * $service['quantity'];
 
             $total += $price;
+        }
 
-            $serviceDetails[] = [
-                'service_id' => $serviceModel->id,
-                'name' => $serviceModel->name,
-                'quantity' => $service['quantity'],
-                'price' => $price
-            ];
+        /*
+    |-----------------------------------------------------------
+    | TÍNH TIỀN DỊCH VỤ
+    |-----------------------------------------------------------
+    */
+        if ($request->services) {
+
+            foreach ($request->services as $service) {
+
+                $serviceModel = Service::findOrFail($service['service_id']);
+
+                $quantity = $service['quantity'] ?? 1;
+
+                $price = $serviceModel->price * $quantity;
+
+                $serviceDetails[] = [
+                    'service_name' => $serviceModel->name,
+                    'quantity' => $quantity,
+                    'price' => $serviceModel->price,
+                    'total' => $price
+                ];
+
+                $total += $price;
+            }
         }
 
         return response()->json([
             'nights' => $nights,
             'rooms' => $roomDetails,
             'services' => $serviceDetails,
-            'total_price' => $total
+            'total' => $total
         ]);
     }
 
 
+    /*
+    |-----------------------------------------------------------
+    | CREATE BOOKING
+    |-----------------------------------------------------------
+    */
 
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in',
+            'rooms' => 'required|array',
+            'services' => 'nullable|array'
+        ]);
 
+        DB::beginTransaction();
 
+        try {
 
+            $checkIn = Carbon::parse($request->check_in);
+            $checkOut = Carbon::parse($request->check_out);
 
+            $nights = $checkIn->diffInDays($checkOut);
 
+            $totalGuests = collect($request->rooms)
+                ->sum(fn($room) => ($room['adults'] ?? 0) + ($room['children'] ?? 0));
 
+            /*
+        |------------------------------------------------
+        | CREATE BOOKING
+        |------------------------------------------------
+        */
 
+            $booking = Booking::create([
+                'booking_code' => 'BK-' . strtoupper(Str::random(6)),
+                'user_id' => Auth::id(),
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'nights' => $nights,
+                'guests' => $totalGuests,
+                'status' => 'confirmed' // xác nhận luôn
+            ]);
 
+            $subTotal = 0;
 
+            /*
+        |------------------------------------------------
+        | PROCESS ROOM
+        |------------------------------------------------
+        */
 
+            foreach ($request->rooms as $roomData) {
 
+                $roomType = RoomType::findOrFail($roomData['room_type_id']);
+                $quantity = $roomData['quantity'] ?? 1;
 
+                $availableRooms = Room::where('room_type_id', $roomType->id)
+                    ->where('status', 'available')
+                    ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
+                        $q->where('check_in', '<', $checkOut)
+                            ->where('check_out', '>', $checkIn)
+                            ->whereIn('status', ['pending', 'confirmed']);
+                    })
+                    ->lockForUpdate()
+                    ->take($quantity)
+                    ->get();
 
+                if ($availableRooms->count() < $quantity) {
+                    throw new \Exception("Room {$roomType->name} not enough.");
+                }
 
+                foreach ($availableRooms as $room) {
 
+                    $price = $roomType->base_price * $nights;
 
+                    BookingRoom::create([
+                        'booking_id' => $booking->id,
+                        'room_id' => $room->id,
+                        'room_type_id' => $roomType->id,
+                        'quantity' => 1,
+                        'price' => $price
+                    ]);
 
+                    $subTotal += $price;
 
+                    // chuyển trạng thái phòng
+                    $room->update([
+                        'status' => 'booked'
+                    ]);
+                }
+            }
 
+            /*
+        |------------------------------------------------
+        | SERVICES
+        |------------------------------------------------
+        */
 
+            if ($request->has('services')) {
 
+                foreach ($request->services as $sData) {
 
+                    $service = Service::findOrFail($sData['service_id']);
 
+                    $qty = $sData['quantity'] ?? 1;
 
-    
-    /**
-     * =====================================================
-     * CANCEL BOOKING
-     * =====================================================
-     */
+                    $price = $service->price * $qty;
+
+                    BookingService::create([
+                        'booking_id' => $booking->id,
+                        'service_id' => $service->id,
+                        'quantity' => $qty,
+                        'price' => $price
+                    ]);
+
+                    $subTotal += $price;
+                }
+            }
+
+            /*
+        |------------------------------------------------
+        | FINANCE
+        |------------------------------------------------
+        */
+
+            $tax = $subTotal * 0.05;
+
+            $total = $subTotal + $tax;
+
+            $booking->update([
+                'total_price' => $total
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đặt phòng thành công',
+                'booking_code' => $booking->booking_code,
+                'total_price' => $total
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /*
+    |-----------------------------------------------------------
+    | CANCEL BOOKING
+    |-----------------------------------------------------------
+    */
+
     public function cancel($id)
     {
+        $booking = Booking::findOrFail($id);
 
-        $booking = Booking::find($id);
+        if ($booking->status == 'confirmed') {
 
-        if (!$booking) {
             return response()->json([
-                'message' => 'Booking không tồn tại'
-            ], 404);
-        }
-
-        if (in_array($booking->status, ['cancelled', 'completed'])) {
-            return response()->json([
-                'message' => 'Booking không thể hủy'
-            ], 422);
+                'message' => 'Cannot cancel confirmed booking'
+            ], 400);
         }
 
         $booking->update([
@@ -229,23 +280,202 @@ class UserBookingController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Đã hủy booking'
+            'message' => 'Booking cancelled'
         ]);
     }
-
-    /**
-     * =====================================================
-     * BOOKING CỦA USER
-     * =====================================================
-     */
-    public function myBookings()
-    {
-
-        $bookings = Booking::where('user_id', Auth::id())
-            ->with(['room', 'room.roomType'])
-            ->latest()
-            ->paginate(10);
-
-        return response()->json($bookings);
-    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+    |-----------------------------------------------------------
+    | CREATE BOOKING đã chuyển sang AdminBookingController vì có liên quan đến payment
+    |-----------------------------------------------------------
+    */
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'email' => 'required|email',
+    //         'phone' => 'required',
+    //         'check_in' => 'required|date',
+    //         'check_out' => 'required|date|after:check_in',
+    //         'rooms' => 'required|array',
+    //         'services' => 'nullable|array'
+    //     ]);
+
+    //     DB::beginTransaction();
+
+    //     try {
+
+    //         $checkIn = Carbon::parse($request->check_in);
+    //         $checkOut = Carbon::parse($request->check_out);
+
+    //         $nights = $checkIn->diffInDays($checkOut);
+
+    //         $totalGuests = collect($request->rooms)
+    //             ->sum(fn($room) => ($room['adults'] ?? 0) + ($room['children'] ?? 0));
+
+    //         /*
+    //         |------------------------------------------------
+    //         | CREATE BOOKING
+    //         |------------------------------------------------
+    //         */
+
+    //         $booking = Booking::create([
+    //             'booking_code' => 'BK-' . strtoupper(Str::random(6)),
+    //             'user_id' => Auth::id(),
+    //             'name' => $request->name,
+    //             'email' => $request->email,
+    //             'phone' => $request->phone,
+    //             'check_in' => $checkIn,
+    //             'check_out' => $checkOut,
+    //             'nights' => $nights,
+    //             'guests' => $totalGuests,
+    //             'status' => 'pending',
+    //             'expired_at' => now()->addMinutes(2)
+    //         ]);
+
+    //         $subTotal = 0;
+    //         $roomInfo = [];
+
+    //         /*
+    //         |------------------------------------------------
+    //         | PROCESS ROOM
+    //         |------------------------------------------------
+    //         */
+
+    //         foreach ($request->rooms as $roomData) {
+
+    //             $roomType = RoomType::findOrFail($roomData['room_type_id']);
+    //             $quantity = $roomData['quantity'] ?? 1;
+
+    //             $availableRooms = Room::where('room_type_id', $roomType->id)
+    //                 ->where('status', 'available')
+    //                 ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
+    //                     $q->where('check_in', '<', $checkOut)
+    //                         ->where('check_out', '>', $checkIn)
+    //                         ->whereIn('status', ['pending', 'confirmed']);
+    //                 })
+    //                 ->lockForUpdate()
+    //                 ->take($quantity)
+    //                 ->get();
+
+    //             if ($availableRooms->count() < $quantity) {
+    //                 throw new \Exception("Room {$roomType->name} not enough.");
+    //             }
+
+    //             foreach ($availableRooms as $room) {
+
+    //                 $price = $roomType->base_price * $nights;
+
+    //                 BookingRoom::create([
+    //                     'booking_id' => $booking->id,
+    //                     'room_id' => $room->id,
+    //                     'room_type_id' => $roomType->id,
+    //                     'quantity' => 1,
+    //                     'price' => $price
+    //                 ]);
+
+    //                 $subTotal += $price;
+
+    //                 $roomInfo[] = [
+    //                     'name' => $roomType->name,
+    //                     'price' => $price
+    //                 ];
+
+    //                 $room->update(['status' => 'occupied']);
+    //             }
+    //         }
+
+    //         /*
+    //         |------------------------------------------------
+    //         | SERVICES
+    //         |------------------------------------------------
+    //         */
+
+    //         $serviceInfo = [];
+
+    //         if ($request->has('services')) {
+
+    //             foreach ($request->services as $sData) {
+
+    //                 $service = Service::findOrFail($sData['service_id']);
+
+    //                 $qty = $sData['quantity'] ?? 1;
+
+    //                 $price = $service->price * $qty;
+
+    //                 BookingService::create([
+    //                     'booking_id' => $booking->id,
+    //                     'service_id' => $service->id,
+    //                     'quantity' => $qty,
+    //                     'price' => $price
+    //                 ]);
+
+    //                 $subTotal += $price;
+
+    //                 $serviceInfo[] = [
+    //                     'name' => $service->name,
+    //                     'quantity' => $qty,
+    //                     'price' => $price
+    //                 ];
+    //             }
+    //         }
+
+    //         /*
+    //         |------------------------------------------------
+    //         | FINANCE
+    //         |------------------------------------------------
+    //         */
+
+    //         $tax = $subTotal * 0.05;
+
+    //         $total = $subTotal + $tax;
+
+    //         $booking->update([
+    //             'total_price' => $total
+    //         ]);
+
+    //         /*
+    //         |------------------------------------------------
+    //         | PAYMENT
+    //         |------------------------------------------------
+    //         */
+
+    //         $payment = Payment::create([
+    //             'booking_id' => $booking->id,
+    //             'order_id' => (string) Str::uuid(),
+    //             'request_id' => (string) Str::uuid(),
+    //             'amount' => $total,
+    //             'method' => 'vnpay',
+    //             'status' => 'pending'
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'booking_code' => $booking->booking_code,
+    //             'payment_url' => route('vnpay.pay', $payment->order_id),
+    //             'total' => $total
+    //         ]);
+    //     } catch (\Exception $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
