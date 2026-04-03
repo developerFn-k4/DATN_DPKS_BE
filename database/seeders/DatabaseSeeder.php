@@ -21,9 +21,10 @@ class DatabaseSeeder extends Seeder
             // RoomSeeder::class,
             // RoomImageSeeder::class,
             // UserSeeder::class,
-            // ReviewSeeder::class
+            ReviewSeeder::class
             // ServiceSeeder::class,
-            UpdateRoomTypeCapacitySeeder::class,
+            // UpdateRoomTypeCapacitySeeder::class,
+            // RoomTypesExtraGuestSeeder::class,
         ]);
     }
 }
