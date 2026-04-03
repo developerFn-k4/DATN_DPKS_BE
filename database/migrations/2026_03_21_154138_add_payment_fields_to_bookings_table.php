@@ -18,8 +18,7 @@ return new class extends Migration
                 'refunded'     // Đã hoàn tiền
             ])->default('unpaid')->after('total_price');
 
-            $table->string('payment_method')->nullable()->after('payment_status');
-            $table->timestamp('paid_at')->nullable()->after('payment_method');
+            $table->timestamp('paid_at')->nullable()->after('payment_status');
         });
     }
 
@@ -29,7 +28,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropColumn(['payment_status', 'payment_method', 'paid_at']);
+            $table->dropColumn(['payment_status', 'paid_at']);
         });
     }
 };

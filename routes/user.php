@@ -7,9 +7,10 @@ use App\Http\Controllers\Api\UserRoomTypeController;
 use App\Http\Controllers\Api\UserRoomImageController;
 use App\Http\Controllers\Api\UserRoomController;
 use App\Http\Controllers\Admin\AdminRImageController;
-use App\Http\Controllers\API\PaymentController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\UserBookingController;
 use App\Http\Controllers\Api\UserReviewController;
+use App\Http\Controllers\Api\UserProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,26 +19,45 @@ use App\Http\Controllers\Api\UserReviewController;
 */
 
 Route::prefix('rooms')->group(function () {
-    Route::get('/room-types', [UserRoomTypeController::class, 'index']);
-    // Lấy chi tiết 1 loại phòng
-    Route::get('/room-types/{id}', [UserRoomTypeController::class, 'show']);
-    // Tìm kiếm phòng (có body: check_in, check_out, adults, children_ages, room_type_id)
-    Route::post('/room-types/search', [UserRoomTypeController::class, 'search']);
+    Route::get('/room-types', [UserRoomTypeController::class, 'index'])->name('api.rooms.room-types.index');
+    Route::get('/room-types/{id}', [UserRoomTypeController::class, 'show'])->name('api.rooms.room-types.show');
+    Route::post('/room-types/search', [UserRoomTypeController::class, 'search'])->name('api.rooms.room-types.search');
 });
+
 /*
 |--------------------------------------------------------------------------
-| AUTH
+| AUTH & USER PROFILE
 |--------------------------------------------------------------------------
 */
 Route::prefix('auth')->group(function () {
+    // Public Auth
+    Route::post('/register', [AuthController::class, 'register'])->name('api.auth.register');
+    Route::post('/login', [AuthController::class, 'login'])->name('api.auth.login');
 
-    Route::post('/register', [AuthController::class, 'register']);
+    // Protected Auth & Profile
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', function (Request $request) {
+            return response()->json([
+                'success' => true,
+                'data' => $request->user()
+            ]);
+        })->name('api.auth.me');
 
-    Route::post('/login', [AuthController::class, 'login']);
+        Route::prefix('profile')->group(function () {
+            Route::get('/', [UserProfileController::class, 'show'])->name('api.auth.profile.show');
+            Route::put('/update', [UserProfileController::class, 'update'])->name('api.auth.profile.update');
+            Route::post('/avatar', [UserProfileController::class, 'updateAvatar'])->name('api.auth.profile.avatar');
+        });
+
+        Route::put('/change-password', [UserProfileController::class, 'changePassword'])->name('api.auth.change-password');
+
+        Route::post('/logout', [AuthController::class, 'logout'])->name('api.auth.logout');
+    });
 });
+
 /*
 |--------------------------------------------------------------------------
-| USER LOGIN
+| BOOKING & REVIEWS
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
