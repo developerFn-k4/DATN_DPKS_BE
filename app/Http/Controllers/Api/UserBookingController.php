@@ -240,12 +240,39 @@ class UserBookingController extends Controller
      */
     public function myBookings()
     {
-
         $bookings = Booking::where('user_id', Auth::id())
             ->with(['room', 'room.roomType'])
             ->latest()
             ->paginate(10);
 
         return response()->json($bookings);
+    }
+
+    /**
+     * =====================================================
+     * BOOKINGS CHƯA THANH TOÁN CỦA USER
+     * =====================================================
+     */
+    public function unpaidBookings(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        // DEBUG: xem tất cả bookings của user này (xoá sau khi xác định vấn đề)
+        $allBookings = Booking::where('user_id', $userId)->get(['id', 'status', 'deleted_at']);
+
+        $bookings = Booking::where('user_id', $userId)
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->with(['room', 'room.roomType'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success'      => true,
+            'data'         => $bookings,
+            '_debug'       => [
+                'logged_in_user_id' => $userId,
+                'all_bookings'      => $allBookings,
+            ],
+        ]);
     }
 }
