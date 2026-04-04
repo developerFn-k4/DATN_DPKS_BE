@@ -5,31 +5,33 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Booking;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class CancelExpiredBookings extends Command
 {
     protected $signature = 'booking:cancel-expired';
-
-    protected $description = 'Cancel expired pending bookings';
+    protected $description = 'Hủy các booking pending đã quá hạn';
 
     public function handle()
     {
-        DB::transaction(function () {
+        $now = Carbon::now();
 
-            $bookings = Booking::where('status', 'pending')
-                ->whereNotNull('expired_at')
-                ->where('expired_at', '<=', now())
-                ->lockForUpdate()
-                ->get();
+        $bookings = Booking::where('status', 'pending')
+            ->where('expired_at', '<', $now)
+            ->get();
 
-            foreach ($bookings as $booking) {
+        foreach ($bookings as $booking) {
+            DB::transaction(function () use ($booking) {
+                // 1️⃣ Hủy booking
+                $booking->update(['status' => 'cancel']);
 
-                $booking->update([
-                    'status' => 'cancelled'
-                ]);
-            }
-        });
+                // 2️⃣ Trả phòng về available
+                foreach ($booking->bookingRooms as $br) {
+                    $br->room->update(['status' => 'available']);
+                }
+            });
 
-        $this->info('Expired bookings cancelled successfully.');
+            $this->info("Booking #{$booking->id} đã bị hủy.");
+        }
     }
 }

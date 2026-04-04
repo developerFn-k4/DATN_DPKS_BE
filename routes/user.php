@@ -103,4 +103,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
         Route::get('/fake-success/{orderId}', [PaymentController::class, 'fakeVnpaySuccess'])->name('api.payment.fake-success');
     });
+
+    Route::get('/profile', [AuthController::class, 'profile']);
+
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
+/*
+    |--------------------------------------------------------------------------
+    | USER Đặt Phòng + review
+    |--------------------------------------------------------------------------
+    */
+Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
+Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('calculate-price', [UserBookingController::class, 'calculatePrice']);
+
+    Route::post('/booking', [UserBookingController::class, 'store']);
+    
+    Route::post('{id}/cancel', [UserBookingController::class, 'cancel']);
+    Route::post('auto-cancel', [UserBookingController::class, 'autoCancel']);
+
+    // review
+    Route::post('/reviews', [UserReviewController::class, 'store']);
+    Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
+    Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
 });
