@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\UserBookingController;
 use App\Http\Controllers\Api\UserReviewController;
 use App\Http\Controllers\Api\UserProfileController;
 
+
 /*
 |--------------------------------------------------------------------------
 | PUBLIC API
@@ -60,15 +61,32 @@ Route::prefix('auth')->group(function () {
 | BOOKING & REVIEWS
 |--------------------------------------------------------------------------
 */
-Route::get('/available-rooms', [UserBookingController::class, 'availableRooms'])->name('api.available-rooms');
+Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
 
+    Route::get('/me', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'data' => $request->user()
+        ]);
+    });
+
+    Route::get('/profile', [AuthController::class, 'profile']);
+
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
+/*
+    |--------------------------------------------------------------------------
+    | USER Đặt Phòng + review
+    |--------------------------------------------------------------------------
+    */
+Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
+Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/calculate-price', [UserBookingController::class, 'calculatePrice'])->name('api.calculate-price');
-    Route::get('/services', [UserBookingController::class, 'services'])->name('api.services');
-    Route::post('/bookings', [UserBookingController::class, 'store'])->name('api.bookings.store');
-    Route::get('/my-bookings', [UserBookingController::class, 'myBookings'])->name('api.bookings.index');
-    Route::get('/unpaid-bookings', [UserBookingController::class, 'unpaidBookings'])->name('api.bookings.unpaid');
-    Route::put('/bookings/{id}/cancel', [UserBookingController::class, 'cancel'])->name('api.bookings.cancel');
+    Route::post('calculate-price', [UserBookingController::class, 'calculatePrice']);
+
+    Route::post('/booking', [UserBookingController::class, 'store']);
+    Route::post('{id}/cancel', [UserBookingController::class, 'cancel']);
+    Route::post('auto-cancel', [UserBookingController::class, 'autoCancel']);
 
     Route::post('/reviews', [UserReviewController::class, 'store'])->name('api.reviews.store');
     Route::put('/reviews/{review}', [UserReviewController::class, 'update'])->name('api.reviews.update');

@@ -233,11 +233,19 @@ class UserBookingController extends Controller
         ]);
     }
 
+<<<<<<< Updated upstream
     /**
      * =====================================================
      * BOOKING CỦA USER
      * =====================================================
      */
+=======
+    /*
+    |-----------------------------------------------------------
+    | BOOKING CỦA USER
+    |-----------------------------------------------------------
+    */
+>>>>>>> Stashed changes
     public function myBookings()
     {
         $bookings = Booking::where('user_id', Auth::id())
