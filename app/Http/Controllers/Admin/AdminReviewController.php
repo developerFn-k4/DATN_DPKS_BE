@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 
 class AdminReviewController extends Controller
 {
-
     /**
      * ======================================================
      * DANH SÁCH REVIEW
@@ -16,19 +15,19 @@ class AdminReviewController extends Controller
      */
     public function index(Request $request)
     {
-
         $query = Review::with([
-            'room:id,room_number',
+            'roomType:id,name',
             'user:id,name'
         ]);
 
+        // tìm kiếm
         if ($request->search) {
 
             $query->where(function ($q) use ($request) {
 
-                // tìm theo số phòng
-                $q->whereHas('room', function ($room) use ($request) {
-                    $room->where('room_number', 'like', '%' . $request->search . '%');
+                // tìm theo loại phòng
+                $q->whereHas('roomType', function ($roomType) use ($request) {
+                    $roomType->where('name', 'like', '%' . $request->search . '%');
                 })
 
                     // tìm theo tên khách
@@ -45,7 +44,7 @@ class AdminReviewController extends Controller
             return [
                 'id' => $review->id,
 
-                'room' => $review->room->room_number ?? null,
+                'room_type' => $review->roomType->name ?? null,
 
                 'customer' => $review->user->name ?? null,
 
@@ -78,9 +77,8 @@ class AdminReviewController extends Controller
      */
     public function show($id)
     {
-
         $review = Review::with([
-            'room:id,room_number',
+            'roomType:id,name',
             'user:id,name',
             'booking:id,check_in,check_out'
         ])->findOrFail($id);
@@ -89,7 +87,9 @@ class AdminReviewController extends Controller
             'success' => true,
             'data' => [
                 'id' => $review->id,
-                'room' => $review->room->name ?? null,
+
+                'room_type' => $review->roomType->name ?? null,
+
                 'customer' => $review->user->name ?? null,
 
                 'ratings' => [
@@ -109,7 +109,7 @@ class AdminReviewController extends Controller
                     'check_out' => $review->booking->check_out ?? null
                 ],
 
-                'date' => $review->created_at
+                'date' => $review->created_at->format('d-m-Y H:i:s')
             ]
         ]);
     }
@@ -122,7 +122,6 @@ class AdminReviewController extends Controller
      */
     public function destroy($id)
     {
-
         $review = Review::findOrFail($id);
 
         $review->delete();
