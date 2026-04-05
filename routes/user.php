@@ -68,7 +68,7 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
             'data' => $request->user()
         ]);
     });
-
+    Route::get('/my-bookings', [UserBookingController::class, 'myBookings'])->name('api.bookings.index');
     Route::get('/profile', [AuthController::class, 'profile']);
 
     Route::post('/logout', [AuthController::class, 'logout']);
