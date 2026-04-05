@@ -297,7 +297,7 @@ class UserBookingController extends Controller
 
 
 
-    /*
+     /*
     |-----------------------------------------------------------
     | CREATE BOOKING đã chuyển sang AdminBookingController vì có liên quan đến payment
     |-----------------------------------------------------------
@@ -387,46 +387,95 @@ class UserBookingController extends Controller
     //                     'price' => $price
     //                 ]);
 
-    /**
-     * =====================================================
-     * BOOKING CỦA USER
-     * =====================================================
-     */
-    public function myBookings()
-    {
-        $bookings = Booking::where('user_id', Auth::id())
-            ->with(['room', 'room.roomType'])
-            ->latest()
-            ->paginate(10);
+    //                 $subTotal += $price;
 
-        return response()->json($bookings);
-    }
+    //                 $roomInfo[] = [
+    //                     'name' => $roomType->name,
+    //                     'price' => $price
+    //                 ];
 
-    /**
-     * =====================================================
-     * BOOKINGS CHƯA THANH TOÁN CỦA USER
-     * =====================================================
-     */
-    public function unpaidBookings(Request $request)
-    {
-        $userId = $request->user()->id;
+    //                 $room->update(['status' => 'occupied']);
+    //             }
+    //         }
 
-        // DEBUG: xem tất cả bookings của user này (xoá sau khi xác định vấn đề)
-        $allBookings = Booking::where('user_id', $userId)->get(['id', 'status', 'deleted_at']);
+    //         /*
+    //         |------------------------------------------------
+    //         | SERVICES
+    //         |------------------------------------------------
+    //         */
 
-        $bookings = Booking::where('user_id', $userId)
-            ->whereNotIn('status', ['cancelled', 'completed'])
-            ->with(['room', 'room.roomType'])
-            ->latest()
-            ->get();
+    //         $serviceInfo = [];
 
-        return response()->json([
-            'success'      => true,
-            'data'         => $bookings,
-            '_debug'       => [
-                'logged_in_user_id' => $userId,
-                'all_bookings'      => $allBookings,
-            ],
-        ]);
-    }
-}
+    //         if ($request->has('services')) {
+
+    //             foreach ($request->services as $sData) {
+
+    //                 $service = Service::findOrFail($sData['service_id']);
+
+    //                 $qty = $sData['quantity'] ?? 1;
+
+    //                 $price = $service->price * $qty;
+
+    //                 BookingService::create([
+    //                     'booking_id' => $booking->id,
+    //                     'service_id' => $service->id,
+    //                     'quantity' => $qty,
+    //                     'price' => $price
+    //                 ]);
+
+    //                 $subTotal += $price;
+
+    //                 $serviceInfo[] = [
+    //                     'name' => $service->name,
+    //                     'quantity' => $qty,
+    //                     'price' => $price
+    //                 ];
+    //             }
+    //         }
+
+    //         /*
+    //         |------------------------------------------------
+    //         | FINANCE
+    //         |------------------------------------------------
+    //         */
+
+    //         $tax = $subTotal * 0.05;
+
+    //         $total = $subTotal + $tax;
+
+    //         $booking->update([
+    //             'total_price' => $total
+    //         ]);
+
+    //         /*
+    //         |------------------------------------------------
+    //         | PAYMENT
+    //         |------------------------------------------------
+    //         */
+
+    //         $payment = Payment::create([
+    //             'booking_id' => $booking->id,
+    //             'order_id' => (string) Str::uuid(),
+    //             'request_id' => (string) Str::uuid(),
+    //             'amount' => $total,
+    //             'method' => 'vnpay',
+    //             'status' => 'pending'
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'booking_code' => $booking->booking_code,
+    //             'payment_url' => route('vnpay.pay', $payment->order_id),
+    //             'total' => $total
+    //         ]);
+    //     } catch (\Exception $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
