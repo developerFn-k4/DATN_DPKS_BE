@@ -84,6 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('calculate-price', [UserBookingController::class, 'calculatePrice']);
 
     Route::post('/booking', [UserBookingController::class, 'store']);
+    Route::get('/my-bookings', [UserBookingController::class, 'myBookings']);
+    Route::get('/unpaid-bookings', [UserBookingController::class, 'unpaidBookings']);
     Route::post('{id}/cancel', [UserBookingController::class, 'cancel']);
     Route::post('auto-cancel', [UserBookingController::class, 'autoCancel']);
 
