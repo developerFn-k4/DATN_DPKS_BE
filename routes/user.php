@@ -113,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
     | USER Đặt Phòng + review . 
     |--------------------------------------------------------------------------
     */
+        // abc
 Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
 Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::middleware('auth:sanctum')->group(function () {
