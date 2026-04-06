@@ -92,7 +92,7 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 4. TOTAL BOOKINGS COUNT
+        | 4. TOTAL BOOKINGS
         |--------------------------------------------------------------------------
         */
 
@@ -100,17 +100,19 @@ class AdminDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 5. TOP 5 ROOMS MOST BOOKED
+        | 5. TOP ROOM TYPES MOST BOOKED
         |--------------------------------------------------------------------------
         */
 
-        $topRooms = Room::select(
-            'rooms.id',
-            'rooms.room_number',
+        $topRoomTypes = RoomType::select(
+            'room_types.id',
+            'room_types.name',
             DB::raw('COUNT(bookings.id) as total_bookings')
         )
-            ->leftJoin('bookings', 'bookings.room_id', '=', 'rooms.id')
-            ->groupBy('rooms.id', 'rooms.room_number')
+            ->leftJoin('rooms', 'rooms.room_type_id', '=', 'room_types.id')
+            ->leftJoin('booking_rooms', 'booking_rooms.room_id', '=', 'rooms.id')
+            ->leftJoin('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
+            ->groupBy('room_types.id', 'room_types.name')
             ->orderByDesc('total_bookings')
             ->limit(5)
             ->get();
@@ -125,10 +127,11 @@ class AdminDashboardController extends Controller
             'room_types.id',
             'room_types.name',
             DB::raw('COUNT(bookings.id) as total_bookings'),
-            DB::raw('ROUND((COUNT(bookings.id) / ' . $totalBookings . ') * 100,2) as percentage')
+            DB::raw('ROUND((COUNT(bookings.id) / ' . max($totalBookings, 1) . ') * 100,2) as percentage')
         )
             ->leftJoin('rooms', 'rooms.room_type_id', '=', 'room_types.id')
-            ->leftJoin('bookings', 'bookings.room_id', '=', 'rooms.id')
+            ->leftJoin('booking_rooms', 'booking_rooms.room_id', '=', 'rooms.id')
+            ->leftJoin('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->groupBy('room_types.id', 'room_types.name')
             ->orderByDesc('total_bookings')
             ->get();
@@ -139,7 +142,7 @@ class AdminDashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $latestBookings = Booking::with(['user', 'room'])
+        $latestBookings = Booking::with(['user'])
             ->latest()
             ->limit(5)
             ->get();
@@ -178,7 +181,7 @@ class AdminDashboardController extends Controller
                 'yearly' => $revenueYearly
             ],
 
-            'top_rooms' => $topRooms,
+            'top_room_types' => $topRoomTypes,
 
             'room_type_percentage' => $roomTypeStats,
 
