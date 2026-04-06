@@ -110,7 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 /*
     |--------------------------------------------------------------------------
-    | USER Đặt Phòng + review
+    | USER Đặt Phòng + review . 
     |--------------------------------------------------------------------------
     */
 Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
