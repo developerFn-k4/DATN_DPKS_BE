@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 class AdminServiceController extends Controller
 {
     /**
-     * GET /api/admin/services
+     * GET /api/admin/services cuc cut
      * Danh sách dịch vụ (có thể filter theo type)
      */
     public function index(Request $request)
