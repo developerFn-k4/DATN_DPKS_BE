@@ -335,7 +335,7 @@ class UserBookingController extends Controller
 
 
 
-    /*
+     /*
     |-----------------------------------------------------------
     | CREATE BOOKING đã chuyển sang AdminBookingController vì có liên quan đến payment
     |-----------------------------------------------------------
