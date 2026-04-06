@@ -78,12 +78,15 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
     | USER Đặt Phòng + review
     |--------------------------------------------------------------------------
     */
+
 Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
 Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('calculate-price', [UserBookingController::class, 'calculatePrice']);
 
     Route::post('/booking', [UserBookingController::class, 'store']);
+    Route::get('/my-bookings', [UserBookingController::class, 'myBookings']);
+    Route::get('/unpaid-bookings', [UserBookingController::class, 'unpaidBookings']);
     Route::post('{id}/cancel', [UserBookingController::class, 'cancel']);
     Route::post('auto-cancel', [UserBookingController::class, 'autoCancel']);
 
@@ -91,4 +94,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reviews', [UserReviewController::class, 'store']);
     Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
     Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
+
+    // code của an ngoa
+    Route::get('/payment-history', [PaymentController::class, 'history'])->name('api.payment.history');
+
+    Route::prefix('payment')->group(function () {
+        Route::post('/vnpay/{bookingId}', [PaymentController::class, 'createVnpay'])->name('api.payment.vnpay');
+        Route::get('/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
+        Route::get('/fake-success/{orderId}', [PaymentController::class, 'fakeVnpaySuccess'])->name('api.payment.fake-success');
+    });
 });
