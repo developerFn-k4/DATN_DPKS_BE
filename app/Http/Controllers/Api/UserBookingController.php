@@ -425,8 +425,4 @@ class UserBookingController extends Controller
     //                     'price' => $price
     //                 ]);
 
-/**
- * =====================================================
- * BOOKING CỦA USER
- * =====================================================
- */
+
