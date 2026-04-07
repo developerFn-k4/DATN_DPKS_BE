@@ -17,7 +17,7 @@ class UserRoomTypeController extends Controller
         $today = Carbon::today();
 
         $roomTypes = RoomType::where('status', 'active')
-            ->with(['images', 'rooms'])
+            ->with(['images', 'rooms', 'reviews'])
             ->get();
 
         $result = $roomTypes->map(function ($type) use ($today) {
@@ -33,6 +33,17 @@ class UserRoomTypeController extends Controller
                         ->whereDate('check_out', '>', $today);
                 })
                 ->count();
+
+            // --- Reviews ---
+            $reviews = $type->reviews;
+
+            $totalReviews = $reviews->count();
+
+            $averageRate = $totalReviews > 0
+                ? $reviews->map(function ($r) {
+                    return ($r->cleanliness + $r->comfort + $r->service) / 3;
+                })->avg()
+                : 0;
 
             return [
                 'room_type_id' => $type->id,
@@ -54,6 +65,9 @@ class UserRoomTypeController extends Controller
 
                 'total_rooms' => $totalRooms,
                 'available_rooms' => $availableRooms,
+
+                'total_reviews' => $totalReviews,
+                'average_rate' => round($averageRate, 1),
 
                 'images' => $type->images->map(function ($img) {
                     return asset('storage/' . $img->image_url);
@@ -106,51 +120,42 @@ class UserRoomTypeController extends Controller
         ]);
     }
 
-    // Tìm kiếm phòng
     public function search(Request $request)
     {
-        // Validate input
         $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
             'name' => 'nullable|string',
             'room_type_id' => 'nullable|exists:room_types,id',
-            'adults' => 'nullable|integer|min:1',
+            'adults' => 'required|integer|min:1',
             'children_ages' => 'nullable|array',
-            'quantity_rooms' => 'nullable|integer|min:1', // số lượng phòng user muốn
-        ], [
-            'check_in.required' => 'Vui lòng chọn ngày nhận phòng',
-            'check_in.date' => 'Ngày nhận phòng không hợp lệ',
-            'check_out.required' => 'Vui lòng chọn ngày trả phòng',
-            'check_out.date' => 'Ngày trả phòng không hợp lệ',
-            'check_out.after' => 'Ngày trả phòng phải sau ngày nhận phòng',
-            'room_type_id.exists' => 'Loại phòng không tồn tại',
-            'adults.integer' => 'Số lượng người lớn phải là số',
-            'adults.min' => 'Số lượng người lớn phải tối thiểu 1',
-            'quantity_rooms.integer' => 'Số lượng phòng phải là số',
-            'quantity_rooms.min' => 'Số lượng phòng phải tối thiểu 1',
+            'quantity_rooms' => 'nullable|integer|min:1'
         ]);
 
         $checkIn = $request->check_in;
         $checkOut = $request->check_out;
-        $adults = (int) ($request->adults ?? 0);
+        $adults = (int)$request->adults;
         $childrenAges = $request->children_ages ?? [];
-        $quantityRooms = (int) ($request->quantity_rooms ?? 0);
+        $quantityRooms = $request->quantity_rooms ?? null;
 
-        // Tính số trẻ em & sức nặng
-        $children = 0;
-        $childrenWeight = 0;
+        $children = count($childrenAges);
+
+        $childrenUnder10 = 0;
+        $childrenOver10 = 0;
+
         foreach ($childrenAges as $age) {
-            $childrenWeight += ($age < 10) ? 0.5 : 1;
-            $children++;
+            if ($age < 10) {
+                $childrenUnder10++;
+            } else {
+                $childrenOver10++;
+            }
         }
 
-        $totalGuests = $adults + $childrenWeight;
+        $totalGuests = $adults + $childrenOver10 + ($childrenUnder10 * 0.5);
         $requiredCapacity = ceil($totalGuests);
 
-        $nights = Carbon::parse($checkIn)->diffInDays($checkOut);
+        $nights = \Carbon\Carbon::parse($checkIn)->diffInDays($checkOut);
 
-        // Query các loại phòng
         $roomTypesQuery = RoomType::where('status', 'active');
 
         if ($request->filled('name')) {
@@ -166,7 +171,7 @@ class UserRoomTypeController extends Controller
         $result = [];
 
         foreach ($roomTypes as $type) {
-            // Số phòng còn trống
+
             $availableRooms = Room::where('room_type_id', $type->id)
                 ->where('status', 'available')
                 ->whereDoesntHave('bookingRooms.booking', function ($q) use ($checkIn, $checkOut) {
@@ -177,34 +182,42 @@ class UserRoomTypeController extends Controller
                 })
                 ->count();
 
-            if ($availableRooms == 0) continue; // không có phòng trống
+            if ($availableRooms == 0) continue;
 
             $capacityPerRoom = $type->capacity;
 
-            // Số phòng cần đặt
-            $roomsNeeded = $quantityRooms > 0 ? $quantityRooms : ceil($requiredCapacity / $capacityPerRoom);
+            if ($quantityRooms) {
+                $roomsNeeded = $quantityRooms;
+            } else {
+                $roomsNeeded = ceil($requiredCapacity / $capacityPerRoom);
+            }
 
-            if ($availableRooms < $roomsNeeded) continue; // không đủ số phòng
+            if ($availableRooms < $roomsNeeded) continue;
 
-            $pricePerNight = $type->base_price;
-            $totalPrice = $pricePerNight * $nights * $roomsNeeded;
-            $finalPrice = round($totalPrice * 1.05); // cộng thêm 5% phí
+            $maxCapacity = $capacityPerRoom * $roomsNeeded;
+
+            if ($maxCapacity < $requiredCapacity) continue;
+
+            $pricePerNight = (float)$type->base_price;
+
+            $basePrice = $pricePerNight * $roomsNeeded * $nights;
+
+            $totalPrice = round($basePrice * 1.05);
 
             $result[] = [
                 'room_type_id' => $type->id,
                 'name' => $type->name,
                 'capacity_per_room' => $capacityPerRoom,
                 'rooms_needed' => $roomsNeeded,
-                'max_capacity_total' => $capacityPerRoom * $roomsNeeded,
                 'available_rooms' => $availableRooms,
                 'bed_type' => $type->bed_type,
                 'area' => $type->area,
                 'amenities' => $type->amenities ? json_decode($type->amenities) : [],
                 'price_per_room_per_night' => $pricePerNight,
                 'nights' => $nights,
-                'total_price' => $finalPrice,
+                'total_price' => $totalPrice,
                 'currency' => $type->currency,
-                'images' => $type->images->map(fn($img) => asset('storage/' . $img->image_url)),
+                'images' => $type->images->map(fn($img) => asset('storage/' . $img->image_url))
             ];
         }
 
@@ -214,9 +227,13 @@ class UserRoomTypeController extends Controller
             ], 404);
         }
 
-        $collection = collect($result)
-            ->sortBy([['rooms_needed', 'asc'], ['total_price', 'asc']])
-            ->values();
+        $collection = collect($result)->sortBy('total_price')->values();
+
+        /*
+    |--------------------------------------------------------------------------
+    | BEST MATCH (CHEAPEST OPTION)
+    |--------------------------------------------------------------------------
+    */
 
         $bestMatch = $collection->first();
 
@@ -235,7 +252,6 @@ class UserRoomTypeController extends Controller
             'room_types' => $collection
         ]);
     }
-
     public function show($id)
     {
         $today = Carbon::today();
