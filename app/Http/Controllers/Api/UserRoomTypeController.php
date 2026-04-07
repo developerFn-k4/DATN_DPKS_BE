@@ -17,7 +17,7 @@ class UserRoomTypeController extends Controller
         $today = Carbon::today();
 
         $roomTypes = RoomType::where('status', 'active')
-            ->with(['images', 'rooms', 'reviews'])
+            ->with(['images', 'rooms'])
             ->get();
 
         $result = $roomTypes->map(function ($type) use ($today) {
@@ -33,17 +33,6 @@ class UserRoomTypeController extends Controller
                         ->whereDate('check_out', '>', $today);
                 })
                 ->count();
-
-            // --- Reviews ---
-            $reviews = $type->reviews;
-
-            $totalReviews = $reviews->count();
-
-            $averageRate = $totalReviews > 0
-                ? $reviews->map(function ($r) {
-                    return ($r->cleanliness + $r->comfort + $r->service) / 3;
-                })->avg()
-                : 0;
 
             return [
                 'room_type_id' => $type->id,
@@ -65,9 +54,6 @@ class UserRoomTypeController extends Controller
 
                 'total_rooms' => $totalRooms,
                 'available_rooms' => $availableRooms,
-
-                'total_reviews' => $totalReviews,
-                'average_rate' => round($averageRate, 1),
 
                 'images' => $type->images->map(function ($img) {
                     return asset('storage/' . $img->image_url);
@@ -120,10 +106,11 @@ class UserRoomTypeController extends Controller
         ]);
     }
 
+    // Tìm kiếm phòng
     public function search(Request $request)
     {
         $request->validate([
-            'check_in' => 'required|date',
+            'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'name' => 'nullable|string',
             'room_type_id' => 'nullable|exists:room_types,id',
@@ -229,12 +216,6 @@ class UserRoomTypeController extends Controller
 
         $collection = collect($result)->sortBy('total_price')->values();
 
-        /*
-    |--------------------------------------------------------------------------
-    | BEST MATCH (CHEAPEST OPTION)
-    |--------------------------------------------------------------------------
-    */
-
         $bestMatch = $collection->first();
 
         return response()->json([
@@ -252,6 +233,7 @@ class UserRoomTypeController extends Controller
             'room_types' => $collection
         ]);
     }
+
     public function show($id)
     {
         $today = Carbon::today();

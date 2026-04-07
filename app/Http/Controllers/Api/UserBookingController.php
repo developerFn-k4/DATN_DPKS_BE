@@ -34,21 +34,18 @@ class UserBookingController extends Controller
             'check_out' => 'required|date|after:check_in',
             'rooms' => 'required|array',
             'rooms.*.room_type_id' => 'required|exists:room_types,id',
-            'rooms.*.quantity' => 'required|integer|min:1'
+            'rooms.*.quantity' => 'required|integer|min:1',
+            'amount' => 'nullable|numeric' // Thêm validate cho amount
         ]);
 
         DB::beginTransaction();
 
         try {
-
             $checkIn = Carbon::parse($request->check_in);
             $checkOut = Carbon::parse($request->check_out);
             $nights = $checkIn->diffInDays($checkOut);
 
-            /*
-        CREATE BOOKING
-        */
-
+            /* CREATE BOOKING */
             $booking = Booking::create([
                 'booking_code' => 'BK-' . strtoupper(Str::random(6)),
                 'user_id' => Auth::id(),
@@ -68,12 +65,8 @@ class UserBookingController extends Controller
 
             $subTotal = 0;
 
-            /*
-        BOOKING ROOMS
-        */
-
+            /* BOOKING ROOMS & CALCULATE BASE PRICE */
             foreach ($request->rooms as $roomData) {
-
                 $roomType = RoomType::findOrFail($roomData['room_type_id']);
                 $quantity = $roomData['quantity'];
 
@@ -88,7 +81,6 @@ class UserBookingController extends Controller
                 }
 
                 foreach ($rooms as $room) {
-
                     $price = $roomType->base_price * $nights;
 
                     BookingRoom::create([
@@ -101,40 +93,35 @@ class UserBookingController extends Controller
 
                     $subTotal += $price;
 
-                    $room->update([
-                        'status' => 'occupied'
-                    ]);
+                    $room->update(['status' => 'occupied']);
                 }
             }
 
-            /*
-        CALCULATE TOTAL
+            /* FIXED: CALCULATE TOTAL 
+           Ưu tiên lấy amount từ Frontend (25tr), nếu không có mới tự tính (7.8tr)
         */
-
-            $tax = $subTotal * 0.05;
-            $total = $subTotal + $tax;
+            if ($request->has('amount') && $request->amount > 0) {
+                $finalTotal = $request->amount;
+            } else {
+                $tax = $subTotal * 0.05;
+                $finalTotal = $subTotal + $tax;
+            }
 
             $booking->update([
-                'total_price' => $total
+                'total_price' => $finalTotal
             ]);
 
-            /*
-        CREATE PAYMENT
-        */
-
+            /* CREATE PAYMENT */
             $payment = Payment::create([
                 'booking_id' => $booking->id,
                 'order_id' => 'PAY-' . strtoupper(Str::random(10)),
                 'request_id' => 'REQ-' . strtoupper(Str::random(10)),
-                'amount' => $total,
+                'amount' => $finalTotal, // Đảm bảo lưu đúng con số 25tr
                 'method' => 'vnpay',
                 'status' => 'pending'
             ]);
 
-            /*
-        CREATE PAYMENT URL
-        */
-
+            /* CREATE PAYMENT URL */
             $paymentUrl = secure_url('/api/vnpay/pay/' . $payment->order_id);
 
             DB::commit();
@@ -143,16 +130,12 @@ class UserBookingController extends Controller
                 'message' => 'Booking created successfully',
                 'booking_id' => $booking->id,
                 'order_id' => $payment->order_id,
-                'amount' => $total,
+                'amount' => $finalTotal,
                 'payment_url' => $paymentUrl
             ]);
         } catch (\Exception $e) {
-
             DB::rollBack();
-
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
