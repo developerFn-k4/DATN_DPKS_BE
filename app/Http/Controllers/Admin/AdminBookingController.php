@@ -207,6 +207,133 @@ class AdminBookingController extends Controller
     }
 
     /*
+    |--------------------------------------------------------------------------
+    | ADMIN CRUD
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * DASHBOARD: LIST BOOKINGS
+     */
+    public function index(Request $request)
+    {
+        $query = Booking::with(['user:id,name', 'bookingRooms.room:id,room_number'])
+            ->latest();
+
+        // 1. Phân loại theo status
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // 2. Tìm kiếm (Code, Tên, SĐT, Email)
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->whereNested(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%$search%")
+                    ->orWhere('name', 'like', "%$search%")
+                    ->orWhere('phone', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%");
+            });
+        }
+
+        $bookings = $query->paginate($request->get('limit', 10));
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $bookings
+        ]);
+    }
+
+    /**
+     * VIEW DETAIL
+     */
+    public function show($id)
+    {
+        $booking = Booking::with([
+            'user:id,name,email',
+            'bookingRooms.room.roomType',
+            'services.service',
+            'payment'
+        ])->findOrFail($id);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $booking
+        ]);
+    }
+
+    /**
+     * UPDATE STATUS / INFO
+     */
+    public function update(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        $request->validate([
+            'status' => 'nullable|in:pending,confirmed,checked_in,checked_out,cancelled,completed',
+            'name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email'
+        ]);
+
+        $oldStatus = $booking->status;
+        $newStatus = $request->status;
+
+        DB::beginTransaction();
+        try {
+            // Cập nhật thông tin
+            if ($request->has('status')) $booking->status = $newStatus;
+            if ($request->has('name')) $booking->name = $request->name;
+            if ($request->has('phone')) $booking->phone = $request->phone;
+            if ($request->has('email')) $booking->email = $request->email;
+            $booking->save();
+
+            // Logic cập nhật trạng thái phòng
+            if ($newStatus && $newStatus !== $oldStatus) {
+                $roomIds = $booking->bookingRooms->pluck('room_id');
+
+                if ($newStatus === 'checked_in') {
+                    Room::whereIn('id', $roomIds)->update(['status' => 'occupied']);
+                } elseif (in_array($newStatus, ['checked_out', 'cancelled', 'completed'])) {
+                    Room::whereIn('id', $roomIds)->update(['status' => 'available']);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Cập nhật đơn đặt phòng thành công',
+                'data' => $booking->load('bookingRooms.room')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * DELETE (Soft Delete)
+     */
+    public function destroy($id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        // Giải phóng phòng nếu đơn đang active
+        if (in_array($booking->status, ['pending', 'confirmed', 'checked_in'])) {
+            $roomIds = $booking->bookingRooms->pluck('room_id');
+            Room::whereIn('id', $roomIds)->update(['status' => 'available']);
+        }
+
+        $booking->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã xóa đơn đặt phòng'
+        ]);
+    }
+
+    /*
 |---------------------------------------------------------------------------
 | VNPay REDIRECT
 |---------------------------------------------------------------------------
@@ -322,9 +449,10 @@ class AdminBookingController extends Controller
             'Message' => 'Confirm success'
         ]);
     }
+
     /*
     |--------------------------------------------------------------------------
-    | CANCEL BOOKING
+    | CANCEL BOOKING (OLD)
     |--------------------------------------------------------------------------
     */
     public function cancel($id)
@@ -342,7 +470,7 @@ class AdminBookingController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | CRON AUTO CANCEL
+    | CREATE BOOKING (OLD/EXPERIMENTAL)
     |--------------------------------------------------------------------------
     */
     public function createBooking(Request $request)
@@ -366,3 +494,5 @@ class AdminBookingController extends Controller
         ]);
     }
 }
+
+

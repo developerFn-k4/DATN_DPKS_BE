@@ -90,13 +90,19 @@ Route::middleware(['auth:sanctum', 'admin'])
         |--------------------------------------------------------------------------
         | BOOKINGS
         |--------------------------------------------------------------------------
+        | Mới: Danh sách, Chi tiết, Cập nhật trạng thái, Xóa
         */
+        Route::post('bookings/calculate-price', [AdminBookingController::class, 'calculatePrice']);
+        Route::apiResource('bookings', AdminBookingController::class);
+
+        // Cũ (Giữ lại theo yêu cầu)
         Route::post('search', [AdminBookingController::class, 'search']);
         Route::post('calculate-price', [AdminBookingController::class, 'calculatePrice']);
         Route::post('/booking', [AdminBookingController::class, 'store']);
         Route::post('{id}/cancel', [AdminBookingController::class, 'cancel']);
-
         Route::post('auto-cancel', [AdminBookingController::class, 'autoCancel']);
+
+
 
 
 
