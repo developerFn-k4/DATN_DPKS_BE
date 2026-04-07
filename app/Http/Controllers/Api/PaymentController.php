@@ -5,37 +5,47 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
+
+    /**
+     * TẠO LINK THANH TOÁN VNPAY
+     */
     public function createVnpay(Request $request, $bookingId)
     {
         $booking = Booking::findOrFail($bookingId);
 
-        $vnp_TmnCode = env('VNPAY_TMN_CODE');
-        $vnp_HashSecret = env('VNPAY_HASH_SECRET');
-        $vnp_Url = env('VNPAY_URL');
-        $vnp_Returnurl = env('VNPAY_RETURN_URL');
+        if ($booking->status === 'confirmed') {
+            return response()->json([
+                'message' => 'Booking already paid'
+            ], 400);
+        }
 
-        // Mã giao dịch
-        $vnp_TxnRef = time();
+        $vnp_TmnCode = config('vnpay.tmn_code');
+        $vnp_HashSecret = config('vnpay.hash_secret');
+        $vnp_Url = config('vnpay.url');
+        $vnp_Returnurl = config('vnpay.return_url');
 
-        $vnp_OrderInfo = "Thanh toan dat phong #" . $booking->id;
+        $vnp_TxnRef = 'PAY' . time() . rand(1000, 9999);
+
+        $vnp_OrderInfo = "Thanh toan booking #" . $booking->id;
         $vnp_OrderType = "billpayment";
         $vnp_Amount = $booking->total_price * 100;
         $vnp_Locale = "vn";
         $vnp_IpAddr = $request->ip();
 
         /**
-         * LƯU PAYMENT TRƯỚC KHI THANH TOÁN
+         * LƯU PAYMENT
          */
         Payment::create([
             'booking_id' => $booking->id,
             'order_id' => $vnp_TxnRef,
             'request_id' => uniqid(),
             'amount' => $booking->total_price,
+            'method' => 'vnpay',
             'status' => 'pending'
         ]);
 
@@ -80,51 +90,17 @@ class PaymentController extends Controller
             "payment_url" => $paymentUrl
         ]);
     }
-    public function history(Request $request)
-    {
-        $payments = Payment::with(['booking.room.roomType'])
-            ->whereHas('booking', function ($q) use ($request) {
-                $q->where('user_id', $request->user()->id);
-            })
-            ->latest()
-            ->get()
-            ->map(function ($payment) {
-                return [
-                    'id'           => $payment->id,
-                    'order_id'     => $payment->order_id,
-                    'amount'       => $payment->amount,
-                    'method'       => $payment->method,
-                    'status'       => $payment->status,
-                    'paid_at'      => $payment->updated_at,
-                    'booking'      => [
-                        'id'           => $payment->booking->id,
-                        'booking_code' => $payment->booking->booking_code,
-                        'check_in'     => $payment->booking->check_in,
-                        'check_out'    => $payment->booking->check_out,
-                        'nights'       => $payment->booking->nights,
-                        'total_price'  => $payment->booking->total_price,
-                        'status'       => $payment->booking->status,
-                        'room'         => $payment->booking->room ? [
-                            'id'        => $payment->booking->room->id,
-                            'name'      => $payment->booking->room->name,
-                            'room_type' => $payment->booking->room->roomType?->name,
-                        ] : null,
-                    ],
-                ];
-            });
 
-        return response()->json([
-            'success' => true,
-            'data'    => $payments,
-        ]);
-    }
-
+    /**
+     * CALLBACK SAU KHI THANH TOÁN
+     */
     public function vnpayReturn(Request $request)
     {
-        $vnp_HashSecret = env('VNPAY_HASH_SECRET');
+
+        $vnp_HashSecret = config('vnpay.hash_secret');
 
         $inputData = $request->all();
-        $vnp_SecureHash = $inputData['vnp_SecureHash'];
+        $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? null;
 
         unset($inputData['vnp_SecureHash']);
         unset($inputData['vnp_SecureHashType']);
@@ -135,6 +111,7 @@ class PaymentController extends Controller
         $i = 0;
 
         foreach ($inputData as $key => $value) {
+
             if ($i == 1) {
                 $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
             } else {
@@ -145,24 +122,53 @@ class PaymentController extends Controller
 
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
-        if ($secureHash != $vnp_SecureHash) {
+        /**
+         * VERIFY SIGNATURE
+         */
+        if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
+
+            Log::error("VNPay Invalid Signature", [
+                "data" => $request->all()
+            ]);
+
             return response()->json([
-                'message' => 'Invalid signature'
+                "message" => "Invalid signature"
             ], 400);
         }
 
-        $vnp_ResponseCode = $request->vnp_ResponseCode;
         $orderId = $request->vnp_TxnRef;
+        $responseCode = $request->vnp_ResponseCode;
+        $amount = $request->vnp_Amount / 100;
 
-        $payment = Payment::where('order_id', $orderId)->first();
+        $payment = Payment::where('order_id', $orderId)
+            ->orWhereRaw("REPLACE(order_id, '-', '') = ?", [$orderId])
+            ->first();
 
         if (!$payment) {
             return response()->json([
-                'message' => 'Payment not found'
+                "message" => "Payment not found"
             ], 404);
         }
 
-        if ($vnp_ResponseCode == '00') {
+        /**
+         * CHỐNG DOUBLE PAYMENT
+         */
+        if ($payment->status == 'success') {
+            return response()->json([
+                "message" => "Payment already confirmed"
+            ]);
+        }
+
+        /**
+         * VERIFY AMOUNT
+         */
+        if ($payment->amount != $amount) {
+            return response()->json([
+                "message" => "Invalid amount"
+            ], 400);
+        }
+
+        if ($responseCode == '00') {
 
             $payment->status = 'success';
             $payment->save();
@@ -172,11 +178,13 @@ class PaymentController extends Controller
             $booking->status = 'confirmed';
             $booking->save();
 
-            $booking->room->status = 'booked';
-            $booking->room->save();
+            if ($booking->room) {
+                $booking->room->status = 'booked';
+                $booking->room->save();
+            }
 
             return response()->json([
-                'message' => 'Thanh toán thành công'
+                "message" => "Thanh toán thành công"
             ]);
         }
 
@@ -184,7 +192,27 @@ class PaymentController extends Controller
         $payment->save();
 
         return response()->json([
-            'message' => 'Thanh toán thất bại'
+            "message" => "Thanh toán thất bại"
+        ]);
+    }
+
+
+    /**
+     * LỊCH SỬ THANH TOÁN
+     */
+    public function history(Request $request)
+    {
+
+        $payments = Payment::with(['booking.room.roomType'])
+            ->whereHas('booking', function ($q) use ($request) {
+                $q->where('user_id', $request->user()->id);
+            })
+            ->latest()
+            ->get();
+
+        return response()->json([
+            "success" => true,
+            "data" => $payments
         ]);
     }
 }
