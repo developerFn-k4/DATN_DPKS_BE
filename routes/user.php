@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\UserProfileController;
 |--------------------------------------------------------------------------
 */
 
+Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
+Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
+Route::get('payment/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
 Route::prefix('rooms')->group(function () {
     Route::get('/room-types', [UserRoomTypeController::class, 'index'])->name('api.rooms.room-types.index');
     Route::get('/room-types/{id}', [UserRoomTypeController::class, 'show'])->name('api.rooms.room-types.show');
@@ -79,8 +82,7 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
-Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('calculate-price', [UserBookingController::class, 'calculatePrice']);
 
@@ -100,7 +102,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('payment')->group(function () {
         Route::post('/vnpay/{bookingId}', [PaymentController::class, 'createVnpay'])->name('api.payment.vnpay');
-        Route::get('/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
         Route::get('/fake-success/{orderId}', [PaymentController::class, 'fakeVnpaySuccess'])->name('api.payment.fake-success');
     });
 });
