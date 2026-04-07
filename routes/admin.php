@@ -19,8 +19,8 @@ use App\Http\Controllers\Admin\AdminServiceController;
 */
 
 
-Route::get('vnpay/pay/{orderId}', [AdminBookingController::class, 'vnpayPay'])->name('vnpay.pay');
-Route::post('vnpay/webhook', [AdminBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
+// Route::get('vnpay/pay/{orderId}', [AdminBookingController::class, 'vnpayPay'])->name('vnpay.pay');
+// Route::post('vnpay/webhook', [AdminBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::middleware(['auth:sanctum', 'admin'])
     ->prefix('admin')
     ->group(function () {

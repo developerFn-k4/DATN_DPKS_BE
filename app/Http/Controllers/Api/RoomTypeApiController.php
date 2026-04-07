@@ -10,7 +10,29 @@ class RoomTypeApiController extends Controller
 {
     public function index()
     {
-        return response()->json(RoomType::all());
+        $roomTypes = RoomType::with('reviews')
+            ->get()
+            ->map(function ($roomType) {
+
+                $totalReviews = $roomType->reviews->count();
+
+                $averageRate = $totalReviews > 0
+                    ? round($roomType->reviews->avg('rating'), 1)
+                    : 0;
+
+                return [
+                    'id' => $roomType->id,
+                    'hotel_id' => $roomType->hotel_id,
+                    'name' => $roomType->name,
+                    'capacity' => $roomType->capacity,
+                    'price' => $roomType->price,
+
+                    'total_reviews' => $totalReviews,
+                    'average_rate' => $averageRate
+                ];
+            });
+
+        return response()->json($roomTypes);
     }
 
     public function store(Request $request)
@@ -18,7 +40,7 @@ class RoomTypeApiController extends Controller
         $data = $request->validate([
             'hotel_id'   => 'nullable',
             'name'       => 'required',
-            'description'=> 'nullable',
+            'description' => 'nullable',
             'capacity'   => 'required|integer',
             'bed_type'   => 'required',
             'base_price' => 'required|numeric'
@@ -41,7 +63,7 @@ class RoomTypeApiController extends Controller
         $data = $request->validate([
             'hotel_id'   => 'nullable',
             'name'       => 'required',
-            'description'=> 'nullable',
+            'description' => 'nullable',
             'capacity'   => 'required|integer',
             'bed_type'   => 'required',
             'base_price' => 'required|numeric'
