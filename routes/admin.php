@@ -31,6 +31,7 @@ Route::middleware(['auth:sanctum', 'admin'])
         |--------------------------------------------------------------------------
         */
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+        Route::get('/stats', [AdminDashboardController::class, 'stats']);
 
         
         // chuyển trạng thái user
