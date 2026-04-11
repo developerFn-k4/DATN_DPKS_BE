@@ -59,7 +59,24 @@ class AdminRoomTypeController extends Controller
         $roomType = RoomType::with('images')->findOrFail($id);
 
         return response()->json([
-            'data' => $roomType
+            'data' => [
+                'id'         => $roomType->id,
+                'hotel_id'   => $roomType->hotel_id,
+                'name'       => $roomType->name,
+                'capacity'   => $roomType->capacity,
+                'bed_type'   => $roomType->bed_type,
+                'area'       => $roomType->area,
+                'amenities'  => $roomType->amenities ? json_decode($roomType->amenities) : [],
+                'base_price' => $roomType->base_price,
+                'currency'   => $roomType->currency,
+                'status'     => $roomType->status,
+                'created_at' => $roomType->created_at,
+                'updated_at' => $roomType->updated_at,
+                'images'     => $roomType->images->map(fn($img) => [
+                    'id'        => $img->id,
+                    'image_url' => asset('storage/' . $img->image_url)
+                ])
+            ]
         ]);
     }
 
