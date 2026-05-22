@@ -21,6 +21,9 @@ use App\Http\Controllers\Api\UserProfileController;
 Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
 Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::get('payment/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
+Route::get('payment/momo-return', [PaymentController::class, 'momoReturn'])->name('api.payment.momo-return');
+Route::get('payment/momo/simulate-success/{orderId}', [PaymentController::class, 'simulateMomoSuccess'])
+    ->name('api.payment.momo.simulate-success');
 Route::prefix('rooms')->group(function () {
     Route::get('/room-types', [UserRoomTypeController::class, 'index'])->name('api.rooms.room-types.index');
     Route::get('/room-types/{id}', [UserRoomTypeController::class, 'show'])->name('api.rooms.room-types.show');
@@ -96,12 +99,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reviews', [UserReviewController::class, 'store']);
     Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
     Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
+    Route::get('/room-types/{roomTypeId}/reviews/eligibility', [UserReviewController::class, 'reviewEligibility']);
 
     // code của an ngoa
     Route::get('/payment-history', [PaymentController::class, 'history'])->name('api.payment.history');
 
     Route::prefix('payment')->group(function () {
+        Route::post('/checkout/{bookingId}', [PaymentController::class, 'checkout'])->name('api.payment.checkout');
         Route::post('/vnpay/{bookingId}', [PaymentController::class, 'createVnpay'])->name('api.payment.vnpay');
+        Route::post('/momo/{bookingId}', [PaymentController::class, 'createMomo'])->name('api.payment.momo');
+        Route::post('/cash/{bookingId}', [PaymentController::class, 'payCash'])->name('api.payment.cash');
         Route::get('/fake-success/{orderId}', [PaymentController::class, 'fakeVnpaySuccess'])->name('api.payment.fake-success');
+        Route::get('/status/{orderId}', [PaymentController::class, 'status'])->name('api.payment.status');
     });
 });
+
+Route::get('room-types/{roomTypeId}/reviews', [UserReviewController::class, 'roomTypeReviews'])
+    ->name('api.room-types.reviews');

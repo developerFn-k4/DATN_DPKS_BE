@@ -20,15 +20,20 @@ class Booking extends Model
         'check_out',
         'nights',
         'status',
+        'source',
+        'special_request',
         'guests',
         'expired_at',
-        'total_price'
+        'total_price',
+        'payment_status',
+        'paid_at'
     ];
 
     protected $casts = [
         'check_in' => 'date',
         'check_out' => 'date',
         'expired_at' => 'datetime',
+        'paid_at' => 'datetime',
         'guests' => 'integer',
         'total_price' => 'decimal:2'
     ];
@@ -65,5 +70,10 @@ class Booking extends Model
     public function bookingRooms()
     {
         return $this->hasMany(BookingRoom::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
     }
 }
