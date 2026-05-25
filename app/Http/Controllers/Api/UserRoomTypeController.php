@@ -40,10 +40,18 @@ class UserRoomTypeController extends Controller
             $totalReviews = $reviews->count();
 
             $averageRate = $totalReviews > 0
-                ? $reviews->map(function ($r) {
-                    return ($r->cleanliness + $r->comfort + $r->service) / 3;
-                })->avg()
+                ? $reviews->avg('overall_score')
                 : 0;
+                 $ratingSummary = [
+                'overall' => round((float) $averageRate, 1),
+                'cleanliness' => round((float) ($reviews->avg('cleanliness') ?? 0), 1),
+                'comfort' => round((float) ($reviews->avg('comfort') ?? 0), 1),
+                'location' => round((float) ($reviews->avg('location') ?? 0), 1),
+                'service' => round((float) ($reviews->avg('service') ?? 0), 1),
+                'value' => round((float) ($reviews->avg('value') ?? 0), 1),
+                'wifi' => round((float) ($reviews->avg('wifi') ?? 0), 1),
+                'total_reviews' => $totalReviews,
+            ];
 
             return [
                 'room_type_id' => $type->id,
@@ -68,6 +76,7 @@ class UserRoomTypeController extends Controller
 
                 'total_reviews' => $totalReviews,
                 'average_rate' => round($averageRate, 1),
+                 'rating_summary' => $ratingSummary,
 
                 'images' => $type->images->map(function ($img) {
                     return asset('storage/' . $img->image_url);
@@ -287,17 +296,41 @@ class UserRoomTypeController extends Controller
 
         // --- Tính tổng lượt và điểm trung bình ---
         // Lấy tất cả review của loại phòng
-        $reviews = $roomType->reviews()->get(); // nhớ tạo relation reviews() trong RoomType
+      $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();// nhớ tạo relation reviews() trong RoomType
 
         $totalReviews = $reviews->count();
 
         // Tính điểm trung bình từ các cột thực tế (ví dụ: cleanliness, comfort, service)
         $averageRate = $reviews->count() > 0
-            ? $reviews->map(function ($r) {
-                return ($r->cleanliness + $r->comfort + $r->service) / 3;
-            })->avg()
+             ? $reviews->avg('overall_score')
             : 0;
+ $ratingSummary = [
+            'overall' => round((float) $averageRate, 1),
+            'cleanliness' => round((float) ($reviews->avg('cleanliness') ?? 0), 1),
+            'comfort' => round((float) ($reviews->avg('comfort') ?? 0), 1),
+            'location' => round((float) ($reviews->avg('location') ?? 0), 1),
+            'service' => round((float) ($reviews->avg('service') ?? 0), 1),
+            'value' => round((float) ($reviews->avg('value') ?? 0), 1),
+            'wifi' => round((float) ($reviews->avg('wifi') ?? 0), 1),
+            'total_reviews' => $totalReviews,
+        ];
 
+        $comments = $reviews->map(function ($review) {
+            return [
+                'id' => $review->id,
+                'user_name' => $review->user->name ?? 'Khach hang',
+                'user_avatar' => !empty($review->user->avatar) ? asset('storage/' . $review->user->avatar) : null,
+                'overall_score' => round((float) $review->overall_score, 1),
+                'cleanliness' => $review->cleanliness,
+                'comfort' => $review->comfort,
+                'location' => $review->location,
+                'service' => $review->service,
+                'value' => $review->value,
+                'wifi' => $review->wifi,
+                'comment' => $review->comment,
+                'created_at' => $review->created_at,
+            ];
+        });
         // Response
         return response()->json([
             'room_type' => [
@@ -322,6 +355,8 @@ class UserRoomTypeController extends Controller
                 'services' => $services,
                 'total_reviews' => $totalReviews,
                 'average_rate' => round($averageRate, 1), // làm tròn 1 chữ số
+                'rating_summary' => $ratingSummary,
+                'comments' => $comments,
             ]
         ]);
     }

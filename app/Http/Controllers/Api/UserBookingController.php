@@ -169,7 +169,7 @@ class UserBookingController extends Controller
         $vnp_TmnCode = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
         $vnp_Url = config('vnpay.url');
-        $vnp_Returnurl = config('vnpay.return_url');
+        $vnp_Returnurl = route('api.payment.vnpay-return');
 
         // Chuẩn hóa tham số
         $vnp_TxnRef = preg_replace('/[^A-Z0-9]/i', '', $payment->order_id);
@@ -372,11 +372,14 @@ class UserBookingController extends Controller
     public function myBookings()
     {
         $bookings = Booking::where('user_id', Auth::id())
-            ->with(['room', 'room.roomType'])
+            ->with(['bookingRooms.room.roomType', 'payment'])
             ->latest()
             ->paginate(10);
 
-        return response()->json($bookings);
+        return response()->json([
+            'success' => true,
+            'data' => $bookings,
+        ]);
     }
 
     /**
@@ -387,23 +390,17 @@ class UserBookingController extends Controller
     public function unpaidBookings(Request $request)
     {
         $userId = $request->user()->id;
-
-        // DEBUG: xem tất cả bookings của user này (xoá sau khi xác định vấn đề)
-        $allBookings = Booking::where('user_id', $userId)->get(['id', 'status', 'deleted_at']);
+    
 
         $bookings = Booking::where('user_id', $userId)
             ->whereNotIn('status', ['cancelled', 'completed'])
-            ->with(['room', 'room.roomType'])
+            ->with(['bookingRooms.room.roomType', 'payment'])
             ->latest()
             ->get();
 
         return response()->json([
             'success'      => true,
             'data'         => $bookings,
-            '_debug'       => [
-                'logged_in_user_id' => $userId,
-                'all_bookings'      => $allBookings,
-            ],
         ]);
     }
 }
