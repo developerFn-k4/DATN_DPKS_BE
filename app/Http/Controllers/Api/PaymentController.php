@@ -46,7 +46,7 @@ class PaymentController extends Controller
         $vnp_TmnCode = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
         $vnp_Url = config('vnpay.url');
-        $vnp_Returnurl = config('vnpay.return_url');
+        $vnp_Returnurl = route('api.payment.vnpay-return');
 
         $vnp_TxnRef = 'VNP' . now()->format('YmdHis') . rand(1000, 9999);
 
@@ -363,7 +363,9 @@ class PaymentController extends Controller
                 'amount' => $payment->amount,
                 'booking' => [
                     'id' => $payment->booking->id,
+                    'name' => $payment->booking->name,
                     'booking_code' => $payment->booking->booking_code,
+                    'room_name' => $payment->booking->bookingRooms->first()?->room?->roomType?->name,
                     'status' => $payment->booking->status,
                     'payment_status' => $payment->booking->payment_status,
                     'check_in' => $payment->booking->check_in,

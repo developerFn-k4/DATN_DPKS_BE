@@ -169,7 +169,7 @@ class UserBookingController extends Controller
         $vnp_TmnCode = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
         $vnp_Url = config('vnpay.url');
-        $vnp_Returnurl = config('vnpay.return_url');
+        $vnp_Returnurl = route('api.payment.vnpay-return');
 
         // Chuẩn hóa tham số
         $vnp_TxnRef = preg_replace('/[^A-Z0-9]/i', '', $payment->order_id);
