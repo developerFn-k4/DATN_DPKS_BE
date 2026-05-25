@@ -11,7 +11,6 @@ Route::get('/test-image', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::get('/payment-success', function () {
     $params = request()->only(['booking_id', 'order_id', 'method', 'status']);
     $baseUrl = env('FRONTEND_PAYMENT_SUCCESS_URL', env('FRONTEND_HOME_URL', '/payment-result'));
@@ -29,7 +28,6 @@ Route::get('/payment-failed', function () {
 
     return redirect()->away($baseUrl . $separator . http_build_query($params));
 })->name('payment.failed');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -297,6 +297,7 @@ class UserRoomTypeController extends Controller
 
         // --- Tính tổng lượt và điểm trung bình ---
         $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();
+    $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();
 
         $totalReviews = $reviews->count();
 
@@ -314,7 +315,6 @@ class UserRoomTypeController extends Controller
             'wifi' => round((float) ($reviews->avg('wifi') ?? 0), 1),
             'total_reviews' => $totalReviews,
         ];
-
         $comments = $reviews->map(function ($review) {
             return [
                 'id' => $review->id,
@@ -331,7 +331,6 @@ class UserRoomTypeController extends Controller
                 'created_at' => $review->created_at,
             ];
         });
-
         // Response
         return response()->json([
             'room_type' => [

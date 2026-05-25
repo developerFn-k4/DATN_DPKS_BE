@@ -38,8 +38,7 @@ class UserReviewController extends Controller
                 'message' => 'Không có quyền review'
             ], 403);
         }
-
-        if (!in_array($booking->status, ['confirmed', 'checked_out', 'completed'])) {
+       if (!in_array($booking->status, ['confirmed', 'checked_out', 'completed'])) {
             return response()->json([
                 'message' => 'Chỉ được bình luận sau khi đặt phòng đã xác nhận'
             ], 422);
@@ -180,7 +179,6 @@ class UserReviewController extends Controller
             'message' => 'Đã xóa review'
         ]);
     }
-
     /**
      * Danh sách review theo loại phòng để FE hiển thị dưới form bình luận.
      */

@@ -71,7 +71,6 @@ class Booking extends Model
     {
         return $this->hasMany(BookingRoom::class);
     }
-
     public function reviews()
     {
         return $this->hasMany(Review::class);

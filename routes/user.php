@@ -100,7 +100,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/reviews/{review}', [UserReviewController::class, 'update']);
     Route::delete('/reviews/{review}', [UserReviewController::class, 'destroy']);
     Route::get('/room-types/{roomTypeId}/reviews/eligibility', [UserReviewController::class, 'reviewEligibility']);
-
     // code của an ngoa
     Route::get('/payment-history', [PaymentController::class, 'history'])->name('api.payment.history');
 
@@ -113,6 +112,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/status/{orderId}', [PaymentController::class, 'status'])->name('api.payment.status');
     });
 });
-
 Route::get('room-types/{roomTypeId}/reviews', [UserReviewController::class, 'roomTypeReviews'])
     ->name('api.room-types.reviews');
