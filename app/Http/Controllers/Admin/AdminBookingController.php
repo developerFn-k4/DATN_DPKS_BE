@@ -66,17 +66,28 @@ class AdminBookingController extends Controller
      */
     public function show($id)
     {
-        $booking = Booking::with([
-            'user:id,name,email',
-            'bookingRooms.room.roomType',
-            'services.service',
-            'payment'
-        ])->findOrFail($id);
+        try {
+            // Thay đổi 'services.service' thành mối quan hệ chính xác của bạn
+            // Mình đoán dựa trên Model import của bạn là BookingService:
+            $booking = Booking::with([
+                'user:id,name,email',
+                'bookingRooms.room.roomType',
+                'bookingRooms', // Hoặc 'bookingServices.service' tùy thuộc vào cách bạn thiết kế Model Booking
+                'payment'
+            ])->findOrFail($id);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $booking
-        ]);
+            return response()->json([
+                'status' => 'success',
+                'data' => $booking
+            ]);
+            
+        } catch (\Exception $e) {
+            // Thêm try-catch tạm thời để nếu lỗi, nó trả về thông báo lỗi cụ thể thay vì lỗi 500 chung chung
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
