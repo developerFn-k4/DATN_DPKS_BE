@@ -34,7 +34,11 @@ class AdminBookingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Booking::with(['user:id,name', 'bookingRooms.room:id,room_number'])
+        $query = Booking::with([
+            'user:id,name',
+            'bookingRooms.room:id,room_number',
+            'payment:id,booking_id,order_id,amount,method,status,created_at'
+        ])
             ->latest();
 
         // 1. Phân loại theo status
