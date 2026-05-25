@@ -163,7 +163,7 @@ class AdminBookingController extends Controller
         $vnp_TmnCode = env('VNPAY_TMN_CODE');
         $vnp_HashSecret = env('VNPAY_HASH_SECRET');
         $vnp_Url = env('VNPAY_URL');
-        $vnp_Returnurl = env('VNPAY_RETURN_URL');
+        $vnp_Returnurl = route('api.payment.vnpay-return');
 
         // Chuẩn hóa tham số
         $vnp_TxnRef = preg_replace('/[^A-Z0-9]/i', '', $payment->order_id);
