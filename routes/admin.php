@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminServiceController;
+use App\Http\Controllers\Admin\AdminPaymentController;
 
 
 /*
@@ -106,6 +107,14 @@ Route::middleware(['auth:sanctum', 'admin'])
 
 
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENTS
+        |--------------------------------------------------------------------------
+        */
+        Route::post('payments/{id}/cancel', [AdminPaymentController::class, 'cancel']);
+        Route::delete('payments/{id}', [AdminPaymentController::class, 'destroy']);
 
         /*
         |--------------------------------------------------------------------------
