@@ -103,10 +103,11 @@ Route::middleware(['auth:sanctum', 'admin'])
         Route::post('/booking', [AdminBookingController::class, 'store']);
         Route::post('{id}/cancel', [AdminBookingController::class, 'cancel']);
         Route::post('auto-cancel', [AdminBookingController::class, 'autoCancel']);
-
-
-
-
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENTS
+        |--------------------------------------------------------------------------
+        */
         Route::post('payments/{id}/cancel', [AdminPaymentController::class, 'cancel']);
         Route::delete('payments/{id}', [AdminPaymentController::class, 'destroy']);
         /*

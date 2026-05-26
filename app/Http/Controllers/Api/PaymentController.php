@@ -35,12 +35,10 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
-        $vnp_TmnCode = config('vnpay.tmn_code');
+        $vnp_TmnCode    = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
         $vnp_Url        = config('vnpay.url');
         $vnp_Returnurl  = route('api.payment.vnpay-return');
@@ -82,10 +80,14 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData = http_build_query($inputData);
-        $query    = $hashData;
+        $hashData = '';
+        $query    = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+            $query    .= ($query    ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
-        $paymentUrl = $vnp_Url . '?' . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+        $paymentUrl    = $vnp_Url . '?' . $query . 'vnp_SecureHash=' . $vnpSecureHash;
 
         return response()->json([
             'success' => true,
@@ -99,9 +101,7 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
         $orderId = 'MOMO' . now()->format('YmdHis') . rand(1000, 9999);
@@ -129,9 +129,7 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
         $orderId = 'CASH' . now()->format('YmdHis') . rand(1000, 9999);
@@ -184,7 +182,10 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData   = http_build_query($inputData);
+        $hashData = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
             Log::error('VNPay Invalid Signature (return)', ['data' => $request->all()]);
@@ -244,7 +245,10 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData   = http_build_query($inputData);
+         $hashData = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
@@ -308,15 +312,10 @@ if ($responseCode === '00') {
 
         if (!$orderId) {
 
-            return response()->json([
-                  'success' => false,
-                'message' => 'orderId is required',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'orderId is required'], 422);
         }
 
-        $payment = Payment::where('order_id', $orderId)
-            ->where('method', 'momo')
-            ->first();
+         $payment = Payment::where('order_id', $orderId)->where('method', 'momo')->first();
 
         if (!$payment) {
             return response()->json([
@@ -344,35 +343,29 @@ if ($responseCode === '00') {
             ->first();
 
         if (!$payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment not found',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
         }
 
         if (!$payment->booking || $payment->booking->user_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
         return response()->json([
 'success' => true,
             'data' => [
                 'order_id' => $payment->order_id,
-                'method' => $payment->method,
-                'status' => $payment->status,
-                'amount' => $payment->amount,
-                'booking' => [
-                    'id' => $payment->booking->id,
-                    'name' => $payment->booking->name,
-                    'booking_code' => $payment->booking->booking_code,
-                    'room_name' => $payment->booking->bookingRooms->first()?->room?->roomType?->name,
-                    'status' => $payment->booking->status,
+                 'method'   => $payment->method,
+                'status'   => $payment->status,
+                'amount'   => $payment->amount,
+                'booking'  => [
+                    'id'             => $payment->booking->id,
+                    'name'           => $payment->booking->name,
+                    'booking_code'   => $payment->booking->booking_code,
+                    'room_name'      => $payment->booking->bookingRooms->first()?->room?->roomType?->name,
+                    'status'         => $payment->booking->status,
                     'payment_status' => $payment->booking->payment_status,
-                    'check_in' => $payment->booking->check_in,
-                    'check_out' => $payment->booking->check_out,
-                    'total_price' => $payment->booking->total_price,
+                   'check_in'       => $payment->booking->check_in,
+                    'check_out'      => $payment->booking->check_out,
+                    'total_price'    => $payment->booking->total_price,
                 ],
                 'actions' => [
                     'home' => env('FRONTEND_HOME_URL', '/'),
@@ -396,10 +389,7 @@ if ($responseCode === '00') {
             ->latest()
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $payments,
-        ]);
+       return response()->json(['success' => true, 'data' => $payments]);
     }
      private function resolveBookingForUser(Request $request, $bookingId): Booking
     {
@@ -417,14 +407,10 @@ if ($responseCode === '00') {
             }
 
             $booking = $payment->booking;
-
-            if (!$booking) {
-                return;
-            }
-
-            $booking->status = 'confirmed';
+            if (!$booking) return;
+            $booking->status         = 'confirmed';
             $booking->payment_status = 'paid';
-            $booking->paid_at = now();
+            $booking->paid_at        = now();
             $booking->save();
 
             foreach ($booking->bookingRooms as $bookingRoom) {
