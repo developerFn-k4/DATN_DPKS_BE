@@ -24,4 +24,8 @@ return new class extends Migration
 
         DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending','confirmed','cancelled','completed') NOT NULL DEFAULT 'pending'");
     }
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> c3d6c77a71b885d7a9c9a919d3aa4b1a8a5127a1

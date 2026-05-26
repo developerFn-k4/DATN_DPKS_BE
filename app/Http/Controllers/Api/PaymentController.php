@@ -39,10 +39,10 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        $vnp_TmnCode   = config('vnpay.tmn_code');
+        $vnp_TmnCode    = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
-        $vnp_Url       = config('vnpay.url');
-        $vnp_Returnurl = route('api.payment.vnpay-return');
+        $vnp_Url        = config('vnpay.url');
+        $vnp_Returnurl  = route('api.payment.vnpay-return');
 
         $vnp_TxnRef    = 'VNP' . now()->format('YmdHis') . rand(1000, 9999);
         $vnp_OrderInfo = 'Thanh toan booking #' . $booking->id;
@@ -106,19 +106,19 @@ class PaymentController extends Controller
 
         Payment::create([
             'booking_id' => $booking->id,
-            'order_id' => $orderId,
+            'order_id'   => $orderId,
             'request_id' => (string) Str::uuid(),
-            'amount' => $booking->total_price,
-            'method' => 'momo',
-            'status' => 'pending',
+            'amount'     => $booking->total_price,
+            'method'     => 'momo',
+            'status'     => 'pending',
         ]);
 
         $paymentUrl = route('api.payment.momo.simulate-success', ['orderId' => $orderId]);
 
         return response()->json([
-            'success' => true,
-            'method' => 'momo',
-            'order_id' => $orderId,
+            'success'     => true,
+            'method'      => 'momo',
+            'order_id'    => $orderId,
             'payment_url' => $paymentUrl,
         ]);
     }
@@ -137,32 +137,32 @@ class PaymentController extends Controller
 
         $payment = Payment::create([
             'booking_id' => $booking->id,
-            'order_id' => $orderId,
+            'order_id'   => $orderId,
             'request_id' => (string) Str::uuid(),
-            'amount' => $booking->total_price,
-            'method' => 'cash',
-            'status' => 'success',
+            'amount'     => $booking->total_price,
+            'method'     => 'cash',
+            'status'     => 'success',
         ]);
 
         $this->markPaymentSuccess($payment);
 
         return response()->json([
             'success' => true,
-            'method' => 'cash',
+            'method'  => 'cash',
             'message' => 'Xac nhan thanh toan tien mat thanh cong',
             'payment' => [
                 'order_id' => $payment->order_id,
-                'status' => $payment->status,
-                'amount' => $payment->amount,
+                'status'   => $payment->status,
+                'amount'   => $payment->amount,
             ],
             'booking' => [
-                'id' => $booking->id,
-                'status' => $booking->status,
+                'id'             => $booking->id,
+                'status'         => $booking->status,
                 'payment_status' => $booking->payment_status,
-                'paid_at' => $booking->paid_at,
+                'paid_at'        => $booking->paid_at,
             ],
             'actions' => [
-                'home' => env('FRONTEND_HOME_URL', '/'),
+                'home'       => env('FRONTEND_HOME_URL', '/'),
                 'my_bookings' => env('FRONTEND_BOOKINGS_URL', '/my-bookings'),
             ],
         ]);
@@ -356,22 +356,22 @@ class PaymentController extends Controller
             'success' => true,
             'data' => [
                 'order_id' => $payment->order_id,
-                'method' => $payment->method,
-                'status' => $payment->status,
-                'amount' => $payment->amount,
-                'booking' => [
-                    'id' => $payment->booking->id,
-                    'name' => $payment->booking->name,
-                    'booking_code' => $payment->booking->booking_code,
-                    'room_name' => $payment->booking->bookingRooms->first()?->room?->roomType?->name,
-                    'status' => $payment->booking->status,
+                'method'   => $payment->method,
+                'status'   => $payment->status,
+                'amount'   => $payment->amount,
+                'booking'  => [
+                    'id'             => $payment->booking->id,
+                    'name'           => $payment->booking->name,
+                    'booking_code'   => $payment->booking->booking_code,
+                    'room_name'      => $payment->booking->bookingRooms->first()?->room?->roomType?->name,
+                    'status'         => $payment->booking->status,
                     'payment_status' => $payment->booking->payment_status,
-                    'check_in' => $payment->booking->check_in,
-                    'check_out' => $payment->booking->check_out,
-                    'total_price' => $payment->booking->total_price,
+                    'check_in'       => $payment->booking->check_in,
+                    'check_out'      => $payment->booking->check_out,
+                    'total_price'    => $payment->booking->total_price,
                 ],
                 'actions' => [
-                    'home' => env('FRONTEND_HOME_URL', '/'),
+                    'home'        => env('FRONTEND_HOME_URL', '/'),
                     'my_bookings' => env('FRONTEND_BOOKINGS_URL', '/my-bookings'),
                 ],
             ],
@@ -389,7 +389,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $payments,
+            'data'    => $payments,
         ]);
     }
 
@@ -414,9 +414,9 @@ class PaymentController extends Controller
                 return;
             }
 
-            $booking->status = 'confirmed';
+            $booking->status         = 'confirmed';
             $booking->payment_status = 'paid';
-            $booking->paid_at = now();
+            $booking->paid_at        = now();
             $booking->save();
 
             foreach ($booking->bookingRooms as $bookingRoom) {
@@ -440,9 +440,9 @@ class PaymentController extends Controller
 
         $params = [
             'booking_id' => $payment->booking_id,
-            'order_id' => $payment->order_id,
-            'method' => $payment->method,
-            'status' => $payment->status,
+            'order_id'   => $payment->order_id,
+            'method'     => $payment->method,
+            'status'     => $payment->status,
         ];
 
         $separator = str_contains($baseUrl, '?') ? '&' : '?';

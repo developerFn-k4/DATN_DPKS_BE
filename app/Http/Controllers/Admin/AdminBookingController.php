@@ -34,7 +34,11 @@ class AdminBookingController extends Controller
      */
     public function index(Request $request)
     {
+<<<<<<< HEAD
         $query = Booking::with([
+=======
+          $query = Booking::with([
+>>>>>>> c3d6c77a71b885d7a9c9a919d3aa4b1a8a5127a1
             'user:id,name',
             'bookingRooms.room:id,room_number',
             'payment:id,booking_id,order_id,amount,method,status,created_at'
@@ -70,17 +74,28 @@ class AdminBookingController extends Controller
      */
     public function show($id)
     {
-        $booking = Booking::with([
-            'user:id,name,email',
-            'bookingRooms.room.roomType',
-            'services.service',
-            'payment'
-        ])->findOrFail($id);
+        try {
+            // Thay đổi 'services.service' thành mối quan hệ chính xác của bạn
+            // Mình đoán dựa trên Model import của bạn là BookingService:
+            $booking = Booking::with([
+                'user:id,name,email',
+                'bookingRooms.room.roomType',
+                'bookingRooms', // Hoặc 'bookingServices.service' tùy thuộc vào cách bạn thiết kế Model Booking
+                'payment'
+            ])->findOrFail($id);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $booking
-        ]);
+            return response()->json([
+                'status' => 'success',
+                'data' => $booking
+            ]);
+            
+        } catch (\Exception $e) {
+            // Thêm try-catch tạm thời để nếu lỗi, nó trả về thông báo lỗi cụ thể thay vì lỗi 500 chung chung
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
