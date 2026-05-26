@@ -78,8 +78,12 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData = http_build_query($inputData);
-        $query    = $hashData;
+        $hashData = '';
+        $query    = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+            $query    .= ($query    ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
 
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
         $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
@@ -179,7 +183,10 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData   = http_build_query($inputData);
+        $hashData = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
@@ -238,7 +245,10 @@ class PaymentController extends Controller
 
         ksort($inputData);
 
-        $hashData   = http_build_query($inputData);
+        $hashData = '';
+        foreach ($inputData as $key => $value) {
+            $hashData .= ($hashData ? '&' : '') . $key . '=' . urlencode((string) $value);
+        }
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
