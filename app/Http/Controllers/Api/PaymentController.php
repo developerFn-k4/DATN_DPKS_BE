@@ -66,47 +66,46 @@ class PaymentController extends Controller
         ]);
 
         $inputData = [
-            "vnp_Version" => "2.1.0",
-            "vnp_TmnCode" => $vnp_TmnCode,
-            "vnp_Amount" => $vnp_Amount,
-            "vnp_Command" => "pay",
-            "vnp_CreateDate" => date('YmdHis'),
-            "vnp_CurrCode" => "VND",
-            "vnp_IpAddr" => $vnp_IpAddr,
-            "vnp_Locale" => $vnp_Locale,
-            "vnp_OrderInfo" => $vnp_OrderInfo,
-            "vnp_OrderType" => $vnp_OrderType,
-            "vnp_ReturnUrl" => $vnp_Returnurl,
-            "vnp_TxnRef" => $vnp_TxnRef,
+            'vnp_Version' => '2.1.0',
+            'vnp_TmnCode' => $vnp_TmnCode,
+            'vnp_Amount' => $vnp_Amount,
+            'vnp_Command' => 'pay',
+            'vnp_CreateDate' => date('YmdHis'),
+            'vnp_CurrCode' => 'VND',
+            'vnp_IpAddr' => $vnp_IpAddr,
+            'vnp_Locale' => $vnp_Locale,
+            'vnp_OrderInfo' => $vnp_OrderInfo,
+            'vnp_OrderType' => $vnp_OrderType,
+            'vnp_ReturnUrl' => $vnp_Returnurl,
+            'vnp_TxnRef' => $vnp_TxnRef,
         ];
 
         ksort($inputData);
 
-        $query = "";
-        $hashdata = "";
+        $query = '';
+        $hashData = '';
         $i = 0;
 
         foreach ($inputData as $key => $value) {
 
-            if ($i == 1) {
-                $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
+           if ($i === 1) {
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
-                $hashdata .= urlencode($key) . "=" . urlencode($value);
+                 $hashData .= urlencode($key) . '=' . urlencode($value);
                 $i = 1;
             }
 
-            $query .= urlencode($key) . "=" . urlencode($value) . '&';
+             $query .= urlencode($key) . '=' . urlencode($value) . '&';
         }
 
-        $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
-
-        $paymentUrl = $vnp_Url . "?" . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+       $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        $paymentUrl = $vnp_Url . '?' . $query . 'vnp_SecureHash=' . $vnpSecureHash;
 
         return response()->json([
-             "success" => true,
-            "method" => "vnpay",
-            "order_id" => $vnp_TxnRef,
-            "payment_url" => $paymentUrl
+              'success' => true,
+            'method' => 'vnpay',
+            'order_id' => $vnp_TxnRef,
+            'payment_url' => $paymentUrl,
         ]);
     }
         public function createMomo(Request $request, $bookingId)
@@ -195,20 +194,19 @@ class PaymentController extends Controller
         $inputData = $request->all();
         $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? null;
 
-        unset($inputData['vnp_SecureHash']);
-        unset($inputData['vnp_SecureHashType']);
+       unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
 
         ksort($inputData);
 
-        $hashData = "";
+        $hashData = '';
         $i = 0;
 
         foreach ($inputData as $key => $value) {
 
-            if ($i == 1) {
-                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+            if ($i === 1) {
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
-                $hashData .= urlencode($key) . "=" . urlencode($value);
+                $hashData .= urlencode($key) . '=' . urlencode($value);
                 $i = 1;
             }
         }
@@ -220,12 +218,12 @@ class PaymentController extends Controller
          */
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
 
-            Log::error("VNPay Invalid Signature", [
-                "data" => $request->all()
+            Log::error('VNPay Invalid Signature', [
+                'data' => $request->all()
             ]);
 
             return response()->json([
-                "message" => "Invalid signature"
+                'message' => 'Invalid signature'
             ], 400);
         }
 
@@ -239,7 +237,7 @@ class PaymentController extends Controller
 
         if (!$payment) {
             return response()->json([
-                "message" => "Payment not found"
+                               'message' => 'Payment not found'
             ], 404);
         }
 
@@ -248,7 +246,7 @@ class PaymentController extends Controller
          */
         if ($payment->status == 'success') {
             return response()->json([
-                "message" => "Payment already confirmed"
+                  'message' => 'Payment already confirmed'
             ]);
         }
 
@@ -257,12 +255,11 @@ class PaymentController extends Controller
          */
         if ($payment->amount != $amount) {
             return response()->json([
-                "message" => "Invalid amount"
+               'message' => 'Invalid amount'
             ], 400);
         }
-
-        if ($responseCode == '00') {
-             $this->markPaymentSuccess($payment);
+if ($responseCode === '00') {
+            $this->markPaymentSuccess($payment);
             return redirect()->away($this->buildFrontendResultUrl(true, $payment));
         }
         $payment->status = 'failed';
@@ -383,8 +380,8 @@ class PaymentController extends Controller
             ->get();
 
         return response()->json([
-            "success" => true,
-            "data" => $payments
+            'success' => true,
+            'data' => $payments,
         ]);
     }
      private function resolveBookingForUser(Request $request, $bookingId): Booking

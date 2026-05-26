@@ -21,7 +21,7 @@ use App\Http\Controllers\Api\UserProfileController;
 Route::get('vnpay/pay/{orderId}', [UserBookingController::class, 'vnpayPay'])->name('vnpay.pay');
 Route::post('vnpay/webhook', [UserBookingController::class, 'vnpayWebhook'])->name('vnpay.webhook');
 Route::get('payment/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('api.payment.vnpay-return');
-
+Route::post('payment/vnpay-ipn', [PaymentController::class, 'vnpayIpn'])->name('api.payment.vnpay-ipn');
 Route::get('payment/momo-return', [PaymentController::class, 'momoReturn'])->name('api.payment.momo-return');
 Route::get('payment/momo/simulate-success/{orderId}', [PaymentController::class, 'simulateMomoSuccess'])
     ->name('api.payment.momo.simulate-success');
