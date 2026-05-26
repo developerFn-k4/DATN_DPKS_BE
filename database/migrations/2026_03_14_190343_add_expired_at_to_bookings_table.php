@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::table('bookings', function (Blueprint $table) {
 
             // thêm cột thời gian hết hạn giữ phòng
-            $table->timestamp('expired_at')->nullable()->after('status');
+            if (!Schema::hasColumn('bookings', 'expired_at')) {
+                $table->timestamp('expired_at')->nullable()->after('status');
+            }
         });
     }
 
@@ -25,7 +27,9 @@ return new class extends Migration
     {
         Schema::table('bookings', function (Blueprint $table) {
 
-            $table->dropColumn('expired_at');
+            if (Schema::hasColumn('bookings', 'expired_at')) {
+                $table->dropColumn('expired_at');
+            }
         });
     }
 };
