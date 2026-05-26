@@ -34,11 +34,7 @@ class AdminBookingController extends Controller
      */
     public function index(Request $request)
     {
-<<<<<<< HEAD
         $query = Booking::with([
-=======
-          $query = Booking::with([
->>>>>>> c3d6c77a71b885d7a9c9a919d3aa4b1a8a5127a1
             'user:id,name',
             'bookingRooms.room:id,room_number',
             'payment:id,booking_id,order_id,amount,method,status,created_at'

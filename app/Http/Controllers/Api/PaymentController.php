@@ -34,9 +34,7 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
         $vnp_TmnCode    = config('vnpay.tmn_code');
@@ -86,7 +84,7 @@ class PaymentController extends Controller
         }
 
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
-        $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
+        $paymentUrl    = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
 
         return response()->json([
             'success'     => true,
@@ -101,9 +99,7 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
         $orderId = 'MOMO' . now()->format('YmdHis') . rand(1000, 9999);
@@ -132,9 +128,7 @@ class PaymentController extends Controller
         $booking = $this->resolveBookingForUser($request, $bookingId);
 
         if ($booking->payment_status === 'paid') {
-            return response()->json([
-                'message' => 'Booking already paid'
-            ], 400);
+            return response()->json(['message' => 'Booking already paid'], 400);
         }
 
         $orderId = 'CASH' . now()->format('YmdHis') . rand(1000, 9999);
@@ -166,7 +160,7 @@ class PaymentController extends Controller
                 'paid_at'        => $booking->paid_at,
             ],
             'actions' => [
-                'home'       => env('FRONTEND_HOME_URL', '/'),
+                'home'        => env('FRONTEND_HOME_URL', '/'),
                 'my_bookings' => env('FRONTEND_BOOKINGS_URL', '/my-bookings'),
             ],
         ]);
@@ -230,10 +224,6 @@ class PaymentController extends Controller
         return redirect()->away($this->buildFrontendResultUrl(false, $payment));
     }
 
-    /**
-     * IPN (Instant Payment Notification) — server-to-server callback từ VNPAY.
-     * VNPAY gọi endpoint này để xác nhận thanh toán. Phải trả về JSON, không redirect.
-     */
     public function vnpayIpn(Request $request)
     {
         $vnp_HashSecret = config('vnpay.hash_secret');
@@ -312,21 +302,13 @@ class PaymentController extends Controller
         $orderId = $request->input('orderId') ?? $request->input('order_id');
 
         if (!$orderId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'orderId is required',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'orderId is required'], 422);
         }
 
-        $payment = Payment::where('order_id', $orderId)
-            ->where('method', 'momo')
-            ->first();
+        $payment = Payment::where('order_id', $orderId)->where('method', 'momo')->first();
 
         if (!$payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment not found',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
         }
 
         $resultCode = (string) $request->input('resultCode', '0');
@@ -349,17 +331,11 @@ class PaymentController extends Controller
             ->first();
 
         if (!$payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment not found',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
         }
 
         if (!$payment->booking || $payment->booking->user_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         return response()->json([
@@ -397,10 +373,7 @@ class PaymentController extends Controller
             ->latest()
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'data'    => $payments,
-        ]);
+        return response()->json(['success' => true, 'data' => $payments]);
     }
 
     private function resolveBookingForUser(Request $request, $bookingId): Booking
@@ -419,10 +392,7 @@ class PaymentController extends Controller
             }
 
             $booking = $payment->booking;
-
-            if (!$booking) {
-                return;
-            }
+            if (!$booking) return;
 
             $booking->status         = 'confirmed';
             $booking->payment_status = 'paid';

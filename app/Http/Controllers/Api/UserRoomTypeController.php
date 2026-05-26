@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 
 class UserRoomTypeController extends Controller
 {
-    // Danh sách phòng (index)
     public function index()
     {
         $today = Carbon::today();
@@ -22,10 +21,8 @@ class UserRoomTypeController extends Controller
 
         $result = $roomTypes->map(function ($type) use ($today) {
 
-            // tổng phòng
             $totalRooms = $type->rooms->count();
 
-            // phòng available
             $availableRooms = $type->rooms()
                 ->where('status', 'available')
                 ->whereDoesntHave('bookingRooms.booking', function ($q) use ($today) {
@@ -34,7 +31,6 @@ class UserRoomTypeController extends Controller
                 })
                 ->count();
 
-            // --- Reviews ---
             $reviews = $type->reviews;
 
             $totalReviews = $reviews->count();
@@ -90,11 +86,6 @@ class UserRoomTypeController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | REALTIME PRICE
-    |--------------------------------------------------------------------------
-    */
     public function calculatePrice(Request $request)
     {
         $request->validate([
@@ -239,12 +230,6 @@ class UserRoomTypeController extends Controller
 
         $collection = collect($result)->sortBy('total_price')->values();
 
-        /*
-    |--------------------------------------------------------------------------
-    | BEST MATCH (CHEAPEST OPTION)
-    |--------------------------------------------------------------------------
-    */
-
         $bestMatch = $collection->first();
 
         return response()->json([
@@ -262,19 +247,17 @@ class UserRoomTypeController extends Controller
             'room_types' => $collection
         ]);
     }
+
     public function show($id)
     {
         $today = Carbon::today();
 
-        // Lấy loại phòng + ảnh
         $roomType = RoomType::with('images')
             ->where('status', 'active')
             ->findOrFail($id);
 
-        // Tổng số phòng
         $totalRooms = Room::where('room_type_id', $roomType->id)->count();
 
-        // Phòng còn trống hôm nay
         $availableRooms = Room::where('room_type_id', $roomType->id)
             ->where('status', 'available')
             ->whereDoesntHave('bookingRooms.booking', function ($query) use ($today) {
@@ -285,7 +268,6 @@ class UserRoomTypeController extends Controller
 
         $roomSlots = $availableRooms > 0 ? range(1, $availableRooms) : [];
 
-        // Dịch vụ
         $services = Service::all()->map(function ($service) {
             return [
                 'service_id' => $service->id,
@@ -295,9 +277,7 @@ class UserRoomTypeController extends Controller
             ];
         });
 
-        // --- Tính tổng lượt và điểm trung bình ---
         $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();
-    $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();
 
         $totalReviews = $reviews->count();
 
@@ -315,6 +295,7 @@ class UserRoomTypeController extends Controller
             'wifi' => round((float) ($reviews->avg('wifi') ?? 0), 1),
             'total_reviews' => $totalReviews,
         ];
+
         $comments = $reviews->map(function ($review) {
             return [
                 'id' => $review->id,
@@ -331,7 +312,7 @@ class UserRoomTypeController extends Controller
                 'created_at' => $review->created_at,
             ];
         });
-        // Response
+
         return response()->json([
             'room_type' => [
                 'id' => $roomType->id,
@@ -354,7 +335,7 @@ class UserRoomTypeController extends Controller
                 'room_slots' => $roomSlots,
                 'services' => $services,
                 'total_reviews' => $totalReviews,
-                'average_rate' => round($averageRate, 1), // làm tròn 1 chữ số
+                'average_rate' => round($averageRate, 1),
                 'rating_summary' => $ratingSummary,
                 'comments' => $comments,
             ]

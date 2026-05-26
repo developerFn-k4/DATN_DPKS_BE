@@ -107,7 +107,8 @@ Route::middleware(['auth:sanctum', 'admin'])
 
 
 
-
+        Route::post('payments/{id}/cancel', [AdminPaymentController::class, 'cancel']);
+        Route::delete('payments/{id}', [AdminPaymentController::class, 'destroy']);
         /*
         |--------------------------------------------------------------------------
         | PAYMENTS
