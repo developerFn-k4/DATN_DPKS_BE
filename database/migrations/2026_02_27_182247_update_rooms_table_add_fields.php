@@ -9,8 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-
-            // Thêm trạng thái mới
             $table->enum('status', [
                 'available',
                 'cleaning',
@@ -18,20 +16,25 @@ return new class extends Migration
                 'inactive'
             ])->default('available')->change();
 
-            // Thêm cột note
-            $table->text('note')->nullable()->after('status');
+            if (!Schema::hasColumn('rooms', 'note')) {
+                $table->text('note')->nullable()->after('status');
+            }
 
-            // Thêm soft delete
-            $table->softDeletes();
+            if (!Schema::hasColumn('rooms', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            $table->dropColumn('note');
-            $table->dropSoftDeletes();
-
+            if (Schema::hasColumn('rooms', 'note')) {
+                $table->dropColumn('note');
+            }
+            if (Schema::hasColumn('rooms', 'deleted_at')) {
+                $table->dropSoftDeletes();
+            }
             $table->enum('status', [
                 'available',
                 'maintenance'

@@ -9,27 +9,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('room_types', function (Blueprint $table) {
-
-            // Xóa description
-            $table->dropColumn('description');
-
-            // Diện tích phòng (m2)
-            $table->integer('area')->after('bed_type');
-
-            // Tiện ích phòng
-            $table->json('amenities')->nullable()->after('area');
+            if (Schema::hasColumn('room_types', 'description')) {
+                $table->dropColumn('description');
+            }
+            if (!Schema::hasColumn('room_types', 'area')) {
+                $table->integer('area')->after('bed_type');
+            }
+            if (!Schema::hasColumn('room_types', 'amenities')) {
+                $table->json('amenities')->nullable()->after('area');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('room_types', function (Blueprint $table) {
-
-            $table->text('description')->nullable();
-
-            $table->dropColumn('area');
-
-            $table->dropColumn('amenities');
+            if (!Schema::hasColumn('room_types', 'description')) {
+                $table->text('description')->nullable();
+            }
+            if (Schema::hasColumn('room_types', 'area')) {
+                $table->dropColumn('area');
+            }
+            if (Schema::hasColumn('room_types', 'amenities')) {
+                $table->dropColumn('amenities');
+            }
         });
     }
 };
