@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->timestamp('expired_at')->nullable()->after('status');
+            if (!Schema::hasColumn('bookings', 'expired_at')) {
+                $table->timestamp('expired_at')->nullable()->after('status');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropColumn('expired_at');
+             if (Schema::hasColumn('bookings', 'expired_at')) {
+                $table->dropColumn('expired_at');
+            }
         });
     }
 };

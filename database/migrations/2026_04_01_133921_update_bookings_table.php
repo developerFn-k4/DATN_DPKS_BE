@@ -11,22 +11,26 @@ return new class extends Migration
     {
         Schema::table('bookings', function (Blueprint $table) {
 
-            // remove column
-            $table->dropColumn('payment_method');
-
-            // new columns
-            $table->string('booking_code')->unique()->after('id');
-
-            $table->integer('nights')->after('check_out');
-
-            $table->enum('source', [
-                'website',
-                'admin',
-                'ota',
-                'walkin'
-            ])->default('website')->after('status');
-
-            $table->text('special_request')->nullable()->after('guests');
+            if (Schema::hasColumn('bookings', 'payment_method')) {
+                $table->dropColumn('payment_method');
+            }
+            if (!Schema::hasColumn('bookings', 'booking_code')) {
+                $table->string('booking_code')->unique()->after('id');
+            }
+            if (!Schema::hasColumn('bookings', 'nights')) {
+                $table->integer('nights')->after('check_out');
+            }
+            if (!Schema::hasColumn('bookings', 'source')) {
+                $table->enum('source', [
+                    'website',
+                    'admin',
+                    'ota',
+                    'walkin'
+                ])->default('website')->after('status');
+            }
+            if (!Schema::hasColumn('bookings', 'special_request')) {
+                $table->text('special_request')->nullable()->after('guests');
+            }
         });
     }
 
@@ -34,19 +38,11 @@ return new class extends Migration
     {
         Schema::table('bookings', function (Blueprint $table) {
 
-            $table->enum('payment_method', [
-                'momo',
-                'vnpay',
-                'cash',
-                'bank_transfer'
-            ])->nullable();
-
-            $table->dropColumn([
-                'booking_code',
-                'nights',
-                'source',
-                'special_request'
-            ]);
+             if (!Schema::hasColumn('bookings', 'payment_method')) {
+                $table->enum('payment_method', ['momo', 'vnpay', 'cash', 'bank_transfer'])->nullable();
+            }
+            $cols = array_filter(['booking_code', 'nights', 'source', 'special_request'], fn($c) => Schema::hasColumn('bookings', $c));
+            if ($cols) $table->dropColumn(array_values($cols));
         });
     }
 };
