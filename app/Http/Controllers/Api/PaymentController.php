@@ -39,66 +39,55 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        $vnp_TmnCode = config('vnpay.tmn_code');
+        $vnp_TmnCode   = config('vnpay.tmn_code');
         $vnp_HashSecret = config('vnpay.hash_secret');
-        $vnp_Url = config('vnpay.url');
+        $vnp_Url       = config('vnpay.url');
         $vnp_Returnurl = route('api.payment.vnpay-return');
 
-        $vnp_TxnRef = 'VNP' . now()->format('YmdHis') . rand(1000, 9999);
-        $vnp_OrderInfo = "Thanh toan booking #" . $booking->id;
-        $vnp_OrderType = "billpayment";
-        $vnp_Amount = $booking->total_price * 100;
-        $vnp_Locale = "vn";
-        $vnp_IpAddr = $request->ip();
+        $vnp_TxnRef    = 'VNP' . now()->format('YmdHis') . rand(1000, 9999);
+        $vnp_OrderInfo = 'Thanh toan booking #' . $booking->id;
+        $vnp_OrderType = 'billpayment';
+        $vnp_Amount    = (int) ($booking->total_price * 100);
+        $vnp_Locale    = 'vn';
+        $vnp_IpAddr    = $request->ip() ?: '127.0.0.1';
 
         Payment::create([
             'booking_id' => $booking->id,
-            'order_id' => $vnp_TxnRef,
-            'request_id' => uniqid(),
-            'amount' => $booking->total_price,
-            'method' => 'vnpay',
-            'status' => 'pending'
+            'order_id'   => $vnp_TxnRef,
+            'request_id' => (string) Str::uuid(),
+            'amount'     => $booking->total_price,
+            'method'     => 'vnpay',
+            'status'     => 'pending',
         ]);
 
         $inputData = [
-            'vnp_Version' => '2.1.0',
-            'vnp_TmnCode' => $vnp_TmnCode,
-            'vnp_Amount' => $vnp_Amount,
-            'vnp_Command' => 'pay',
+            'vnp_Version'    => '2.1.0',
+            'vnp_TmnCode'    => $vnp_TmnCode,
+            'vnp_Amount'     => $vnp_Amount,
+            'vnp_Command'    => 'pay',
             'vnp_CreateDate' => date('YmdHis'),
-            'vnp_CurrCode' => 'VND',
-            'vnp_IpAddr' => $vnp_IpAddr,
-            'vnp_Locale' => $vnp_Locale,
-            'vnp_OrderInfo' => $vnp_OrderInfo,
-            'vnp_OrderType' => $vnp_OrderType,
-            'vnp_ReturnUrl' => $vnp_Returnurl,
-            'vnp_TxnRef' => $vnp_TxnRef,
+            'vnp_CurrCode'   => 'VND',
+            'vnp_IpAddr'     => $vnp_IpAddr,
+            'vnp_Locale'     => $vnp_Locale,
+            'vnp_OrderInfo'  => $vnp_OrderInfo,
+            'vnp_OrderType'  => $vnp_OrderType,
+            'vnp_ReturnUrl'  => $vnp_Returnurl,
+            'vnp_TxnRef'     => $vnp_TxnRef,
+            'vnp_IpnUrl'     => route('api.payment.vnpay-ipn'),
         ];
 
         ksort($inputData);
 
-        $query = '';
-        $hashData = '';
-        $i = 0;
-
-        foreach ($inputData as $key => $value) {
-            if ($i === 1) {
-                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
-            } else {
-                $hashData .= urlencode($key) . '=' . urlencode($value);
-                $i = 1;
-            }
-
-            $query .= urlencode($key) . '=' . urlencode($value) . '&';
-        }
+        $hashData = http_build_query($inputData);
+        $query    = $hashData;
 
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
-        $paymentUrl = $vnp_Url . '?' . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+        $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
 
         return response()->json([
-            'success' => true,
-            'method' => 'vnpay',
-            'order_id' => $vnp_TxnRef,
+            'success'     => true,
+            'method'      => 'vnpay',
+            'order_id'    => $vnp_TxnRef,
             'payment_url' => $paymentUrl,
         ]);
     }
@@ -183,61 +172,44 @@ class PaymentController extends Controller
     {
         $vnp_HashSecret = config('vnpay.hash_secret');
 
-        $inputData = $request->all();
+        $inputData      = $request->all();
         $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? null;
 
         unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
 
         ksort($inputData);
 
-        $hashData = '';
-        $i = 0;
-
-        foreach ($inputData as $key => $value) {
-            if ($i === 1) {
-                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
-            } else {
-                $hashData .= urlencode($key) . '=' . urlencode($value);
-                $i = 1;
-            }
-        }
-
+        $hashData   = http_build_query($inputData);
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
-            Log::error('VNPay Invalid Signature', [
-                'data' => $request->all()
-            ]);
-
-            return response()->json([
-                'message' => 'Invalid signature'
-            ], 400);
+            Log::error('VNPay Invalid Signature (return)', ['data' => $request->all()]);
+            return redirect()->away(env('FRONTEND_PAYMENT_FAILED_URL', '/') . '?error=invalid_signature');
         }
 
-        $orderId = $request->vnp_TxnRef;
+        $orderId      = $request->vnp_TxnRef;
         $responseCode = $request->vnp_ResponseCode;
-        $amount = $request->vnp_Amount / 100;
+        $amount       = (int) $request->vnp_Amount / 100;
 
-        $payment = Payment::where('order_id', $orderId)
-            ->orWhereRaw("REPLACE(order_id, '-', '') = ?", [$orderId])
-            ->first();
+        $payment = Payment::where('order_id', $orderId)->first();
 
         if (!$payment) {
-            return response()->json([
-                'message' => 'Payment not found'
-            ], 404);
+            return redirect()->away(env('FRONTEND_PAYMENT_FAILED_URL', '/') . '?error=not_found');
         }
 
         if ($payment->status === 'success') {
-            return response()->json([
-                'message' => 'Payment already confirmed'
-            ]);
+            return redirect()->away($this->buildFrontendResultUrl(true, $payment));
         }
 
-        if ($payment->amount != $amount) {
-            return response()->json([
-                'message' => 'Invalid amount'
-            ], 400);
+        if ((float) $payment->amount !== (float) $amount) {
+            Log::error('VNPay Amount Mismatch', [
+                'expected' => $payment->amount,
+                'received' => $amount,
+                'order_id' => $orderId,
+            ]);
+            $payment->status = 'failed';
+            $payment->save();
+            return redirect()->away($this->buildFrontendResultUrl(false, $payment));
         }
 
         if ($responseCode === '00') {
@@ -249,6 +221,63 @@ class PaymentController extends Controller
         $payment->save();
 
         return redirect()->away($this->buildFrontendResultUrl(false, $payment));
+    }
+
+    /**
+     * IPN (Instant Payment Notification) — server-to-server callback từ VNPAY.
+     * VNPAY gọi endpoint này để xác nhận thanh toán. Phải trả về JSON, không redirect.
+     */
+    public function vnpayIpn(Request $request)
+    {
+        $vnp_HashSecret = config('vnpay.hash_secret');
+
+        $inputData      = $request->all();
+        $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? null;
+
+        unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
+
+        ksort($inputData);
+
+        $hashData   = http_build_query($inputData);
+        $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+
+        if (!$vnp_SecureHash || !hash_equals($secureHash, $vnp_SecureHash)) {
+            Log::error('VNPay Invalid Signature (IPN)', ['data' => $request->all()]);
+            return response()->json(['RspCode' => '97', 'Message' => 'Invalid signature']);
+        }
+
+        $orderId      = $request->vnp_TxnRef;
+        $responseCode = $request->vnp_ResponseCode;
+        $amount       = (int) $request->vnp_Amount / 100;
+
+        $payment = Payment::where('order_id', $orderId)->first();
+
+        if (!$payment) {
+            return response()->json(['RspCode' => '01', 'Message' => 'Order not found']);
+        }
+
+        if ($payment->status === 'success') {
+            return response()->json(['RspCode' => '02', 'Message' => 'Order already confirmed']);
+        }
+
+        if ((float) $payment->amount !== (float) $amount) {
+            Log::error('VNPay IPN Amount Mismatch', [
+                'expected' => $payment->amount,
+                'received' => $amount,
+                'order_id' => $orderId,
+            ]);
+            return response()->json(['RspCode' => '04', 'Message' => 'Invalid amount']);
+        }
+
+        if ($responseCode === '00') {
+            $this->markPaymentSuccess($payment);
+            return response()->json(['RspCode' => '00', 'Message' => 'Confirm success']);
+        }
+
+        $payment->status = 'failed';
+        $payment->save();
+
+        return response()->json(['RspCode' => '00', 'Message' => 'Confirm success']);
     }
 
     public function fakeVnpaySuccess(Request $request, $orderId)
