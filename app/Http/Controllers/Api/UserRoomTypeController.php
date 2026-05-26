@@ -211,7 +211,7 @@ class UserRoomTypeController extends Controller
 
             $basePrice = $pricePerNight * $roomsNeeded * $nights;
 
-            $totalPrice = round($basePrice * 1.05);
+            $totalPrice = round($basePrice);
 
             $result[] = [
                 'room_type_id' => $type->id,
