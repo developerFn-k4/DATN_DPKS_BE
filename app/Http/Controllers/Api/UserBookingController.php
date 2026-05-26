@@ -108,11 +108,35 @@ class UserBookingController extends Controller
             }
 
             /*
+        BOOKING SERVICES
+        */
+
+            $serviceTotal = 0;
+
+            if ($request->has('services') && is_array($request->services)) {
+                foreach ($request->services as $serviceData) {
+                    $service = Service::find($serviceData['service_id']);
+                    if (!$service) continue;
+
+                    $quantity = $serviceData['quantity'] ?? 1;
+                    $servicePrice = $service->price * $quantity * $nights;
+
+                    BookingService::create([
+                        'booking_id' => $booking->id,
+                        'service_id' => $service->id,
+                        'quantity'   => $quantity,
+                        'price'      => $servicePrice,
+                    ]);
+
+                    $serviceTotal += $servicePrice;
+                }
+            }
+
+            /*
         CALCULATE TOTAL
         */
 
-            $tax = $subTotal * 0.05;
-            $total = $subTotal + $tax;
+            $total = $subTotal + $serviceTotal;
 
             $booking->update([
                 'total_price' => $total
