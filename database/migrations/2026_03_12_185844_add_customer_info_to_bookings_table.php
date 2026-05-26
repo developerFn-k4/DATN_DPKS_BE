@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->string('name')->after('user_id');
-            $table->string('email')->after('name');
-            $table->string('phone')->after('email');
+            if (!Schema::hasColumn('bookings', 'name')) {
+                $table->string('name')->after('user_id');
+            }
+            if (!Schema::hasColumn('bookings', 'email')) {
+                $table->string('email')->after('name');
+            }
+            if (!Schema::hasColumn('bookings', 'phone')) {
+                $table->string('phone')->after('email');
+            }
         });
     }
 
@@ -24,7 +30,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropColumn(['name', 'email', 'phone']);
+             $cols = array_filter(['name', 'email', 'phone'], fn($c) => Schema::hasColumn('bookings', $c));
+            if ($cols) $table->dropColumn(array_values($cols));
         });
     }
 };

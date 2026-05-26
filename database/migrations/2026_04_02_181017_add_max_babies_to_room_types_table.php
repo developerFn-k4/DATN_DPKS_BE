@@ -9,14 +9,18 @@ return new class extends Migration
     public function up()
     {
         Schema::table('room_types', function (Blueprint $table) {
-            $table->integer('max_babies')->default(0)->after('max_children');
+           if (!Schema::hasColumn('room_types', 'max_babies')) {
+                $table->integer('max_babies')->default(0)->after('max_children');
+            }
         });
     }
 
     public function down()
     {
         Schema::table('room_types', function (Blueprint $table) {
-            $table->dropColumn('max_babies');
+             if (Schema::hasColumn('room_types', 'max_babies')) {
+                $table->dropColumn('max_babies');
+            }
         });
     }
 };
