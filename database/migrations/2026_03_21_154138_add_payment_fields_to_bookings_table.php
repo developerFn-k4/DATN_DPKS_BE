@@ -12,13 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->enum('payment_status', [
-                'unpaid',      // Chưa thanh toán
-                'paid',        // Đã thanh toán
-                'refunded'     // Đã hoàn tiền
-            ])->default('unpaid')->after('total_price');
+            if (!Schema::hasColumn('bookings', 'payment_status')) {
+                $table->enum('payment_status', [
+                    'unpaid',
+                    'paid',
+                    'refunded'
+                ])->default('unpaid')->after('total_price');
+            }
 
-            $table->timestamp('paid_at')->nullable()->after('payment_status');
+            if (!Schema::hasColumn('bookings', 'paid_at')) {
+                $table->timestamp('paid_at')->nullable()->after('payment_status');
+            }
         });
     }
 

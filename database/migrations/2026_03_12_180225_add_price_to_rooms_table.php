@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            $table->decimal('price', 12, 2)->after('note');
+           if (!Schema::hasColumn('rooms', 'price')) {
+                $table->decimal('price', 12, 2)->after('note');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            $table->dropColumn('price');
+             if (Schema::hasColumn('rooms', 'price')) {
+                $table->dropColumn('price');
+            }
         });
     }
 };

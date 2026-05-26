@@ -296,7 +296,7 @@ class UserRoomTypeController extends Controller
 
         // --- Tính tổng lượt và điểm trung bình ---
         // Lấy tất cả review của loại phòng
-      $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();// nhớ tạo relation reviews() trong RoomType
+        $reviews = $roomType->reviews()->with('user:id,name,avatar')->latest()->get();// nhớ tạo relation reviews() trong RoomType
 
         $totalReviews = $reviews->count();
 
