@@ -114,7 +114,9 @@ class AdminRoomTypeController extends Controller
                 'amenities' => $request->amenities ? json_encode($request->amenities) : null,
                 'base_price' => $request->base_price,
                 'currency' => $request->currency,
-                'status' => $request->status ?? 'active'
+                'status' => $request->status ?? 'active',
+                'max_adults' => $request->max_adults ?? $request->capacity ?? 2,
+                'max_children' => $request->max_children ?? 0,
             ]);
 
             /**
