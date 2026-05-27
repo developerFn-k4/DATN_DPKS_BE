@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // Bổ sung để dùng được hàm restore() trong Controller
+
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class RoomType extends Model
 {
-    use SoftDeletes; // Kích hoạt tính năng Xóa mềm (Tự động quản lý cột deleted_at)
-
     protected $fillable = [
         'hotel_id',
         'name',
@@ -23,46 +22,31 @@ class RoomType extends Model
         'status'
     ];
 
-    /**
-     * TỰ ĐỘNG ÉP KIỂU DỮ LIỆU (Casts)
-     * Fix triệt để lỗi 500 do xung đột định dạng mảng/chuỗi của trường amenities
-     */
     protected $casts = [
-        'hotel_id'   => 'integer',
-        'capacity'   => 'integer',
-        'area'       => 'integer',
+        'capacity' => 'integer',
         'base_price' => 'decimal:2',
-        'amenities'  => 'array', // Ép kiểu cột json/text trong CSDL thành mảng Array khi làm việc với React
     ];
 
-    /**
-     * Mối quan hệ: Loại phòng thuộc về 1 khách sạn
-     */
+
+    // loại phòng thuộc về 1 khách sạn
     public function hotel(): BelongsTo
     {
         return $this->belongsTo(Hotel::class);
     }
 
-    /**
-     * Mối quan hệ: Loại phòng có nhiều phòng cụ thể
-     */
+    // loại phòng có nhiều phòng cụ thể
     public function rooms(): HasMany
     {
         return $this->hasMany(Room::class);
     }
 
-    /**
-     * Mối quan hệ: Loại phòng có nhiều ảnh minh họa
-     */
-    public function images(): HasMany
+    // loại phòng có nhiều ảnh
+    public function images()
     {
         return $this->hasMany(RoomImage::class, 'room_type_id');
     }
 
-    /**
-     * Mối quan hệ: Loại phòng có nhiều đánh giá từ khách hàng
-     */
-    public function reviews(): HasMany
+    public function reviews()
     {
         return $this->hasMany(Review::class, 'room_type_id');
     }
