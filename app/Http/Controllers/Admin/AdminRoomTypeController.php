@@ -256,7 +256,7 @@ class AdminRoomTypeController extends Controller
                     'capacity'     => (int)$roomType->capacity,
                     'bed_type'     => $roomType->bed_type,
                     'area'         => $roomType->area,
-                    'amenities'    => is_array($amenitiesData) ? $amenitiesData : [],
+                    'amenities'    => is_array($roomType->amenities) ? $roomType->amenities : [],
                     'base_price'   => $roomType->base_price,
                     'currency'     => $roomType->currency,
                     'status'       => $roomType->status,

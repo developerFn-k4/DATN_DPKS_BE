@@ -64,9 +64,7 @@ class UserRoomTypeController extends Controller
                 'bed_type' => $type->bed_type,
                 'area' => $type->area,
 
-                'amenities' => $type->amenities
-                    ? json_decode($type->amenities)
-                    : [],
+                'amenities' => is_array($type->amenities) ? $type->amenities : (json_decode($type->amenities) ?? []),
 
                 'base_price' => $type->base_price,
                 'currency' => $type->currency,
