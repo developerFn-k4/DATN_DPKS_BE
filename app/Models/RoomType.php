@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // Bổ sung để dùng được hàm restore() trong Controller
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RoomType extends Model
 {
-    use SoftDeletes; // Kích hoạt tính năng Xóa mềm (Tự động quản lý cột deleted_at)
+    use SoftDeletes;
 
     protected $fillable = [
         'hotel_id',

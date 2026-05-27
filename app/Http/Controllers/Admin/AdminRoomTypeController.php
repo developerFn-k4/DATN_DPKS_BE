@@ -117,7 +117,7 @@ class AdminRoomTypeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'hotel_id' => 'required|exists:hotels,id',
+            'hotel_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'capacity' => 'required|integer',
             'bed_type' => 'required|string|max:255',
@@ -146,7 +146,9 @@ class AdminRoomTypeController extends Controller
                 'amenities' => $amenitiesInput, 
                 'base_price' => $request->base_price,
                 'currency' => $request->currency,
-                'status' => $request->status ?? 'active'
+                'status' => $request->status ?? 'active',
+                'max_adults' => $request->max_adults ?? $request->capacity ?? 2,
+                'max_children' => $request->max_children ?? 0,
             ]);
 
             if ($request->hasFile('images')) {
@@ -248,7 +250,23 @@ class AdminRoomTypeController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Cập nhật loại phòng thành công',
-                'data' => $roomType
+<<<<<<< HEAD
+                'data' => [
+                    'room_type_id' => $roomType->id, // Trả về đúng ID để FE nhận diện
+                    'hotel_id'     => $roomType->hotel_id,
+                    'name'         => $roomType->name,
+                    'capacity'     => (int)$roomType->capacity,
+                    'bed_type'     => $roomType->bed_type,
+                    'area'         => $roomType->area,
+                    'amenities'    => is_array($amenitiesData) ? $amenitiesData : [],
+                    'base_price'   => $roomType->base_price,
+                    'currency'     => $roomType->currency,
+                    'status'       => $roomType->status,
+                    'images'       => $roomType->images->map(fn($img) => [
+                        'id' => $img->id,
+                        'image_url' => asset('storage/' . $img->image_url)
+                    ])
+                ]
             ], 200);
 
         } catch (\Exception $e) {
