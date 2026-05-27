@@ -13,30 +13,28 @@ return [
     |
     | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
     |
+    |--------------------------------------------------------------------------
     */
 
-    // 'paths' => ['*'],
+    // Cho phép tất cả các route API, route của ảnh (storage) và cơ chế bảo mật Sanctum
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*', '*'],
 
-    // 'allowed_methods' => ['*'],
-
-    // 'allowed_origins' => ['*'],
-
-    // 'allowed_origins_patterns' => [],
-
-    // 'allowed_headers' => ['*'],
-
-    // 'exposed_headers' => [],
-
-    // 'max_age' => 0,
-
-    // 'supports_credentials' => false,
-
-    'paths' => ['api/*'],
+    // Cho phép tất cả các phương thức HTTP (GET, POST, PUT, DELETE, OPTIONS)
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['*'], // hoặc chỉ định domain front-end 
+
+    // Mở khóa hoàn toàn cho mọi Origin kết nối (Kể cả từ cổng 5173 của React)
+    'allowed_origins' => ['*'],
+
+    'allowed_origins_patterns' => [],
+
+    // Cho phép truyền mọi Headers lên kèm request (Content-Type, Authorization, X-Requested-With,...)
     'allowed_headers' => ['*'],
+
     'exposed_headers' => [],
+
     'max_age' => 0,
-    'supports_credentials' => false,
+
+    // Chuyển thành true nếu hệ thống của bạn cần gửi kèm Cookie hoặc Token qua Header (Cực kỳ an toàn)
+    'supports_credentials' => true,
 
 ];
