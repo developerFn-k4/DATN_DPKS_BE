@@ -250,7 +250,6 @@ class AdminRoomTypeController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Cập nhật loại phòng thành công',
-<<<<<<< HEAD
                 'data' => [
                     'room_type_id' => $roomType->id, // Trả về đúng ID để FE nhận diện
                     'hotel_id'     => $roomType->hotel_id,
