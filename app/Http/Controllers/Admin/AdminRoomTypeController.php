@@ -18,8 +18,7 @@ class AdminRoomTypeController extends Controller
     {
         try {
             // Sử dụng withTrashed() để kéo lại toàn bộ phòng cũ/mới bị ẩn do dính cột deleted_at
-            $roomTypes = RoomType::withTrashed()
-                ->with('images')
+            $roomTypes = RoomType::with('images')
                 ->orderBy('id', 'desc')
                 ->get()
                 ->map(function ($roomType) {
@@ -257,7 +256,7 @@ class AdminRoomTypeController extends Controller
                     'capacity'     => (int)$roomType->capacity,
                     'bed_type'     => $roomType->bed_type,
                     'area'         => $roomType->area,
-                    'amenities'    => is_array($amenitiesData) ? $amenitiesData : [],
+                    'amenities'    => is_array($roomType->amenities) ? $roomType->amenities : [],
                     'base_price'   => $roomType->base_price,
                     'currency'     => $roomType->currency,
                     'status'       => $roomType->status,
@@ -301,12 +300,15 @@ class AdminRoomTypeController extends Controller
      */
     public function destroy($id)
     {
-        $roomType = RoomType::findOrFail($id);
+        $roomType = RoomType::withTrashed()->findOrFail($id);
+
+        if ($roomType->trashed()) {
+            return response()->json(['message' => 'Loại phòng đã bị xóa trước đó'], 400);
+        }
 
         DB::beginTransaction();
 
         try {
-            // Không xóa ảnh thật trong ổ cứng khi xóa mềm để có thể dùng hàm restore khôi phục lại nguyên vẹn
             $roomType->delete();
             DB::commit();
 
