@@ -86,7 +86,7 @@ class AdminRoomTypeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'hotel_id' => 'required|exists:hotels,id',
+            'hotel_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'capacity' => 'required|integer',
             'bed_type' => 'required|string|max:255',
@@ -237,8 +237,7 @@ class AdminRoomTypeController extends Controller
                     'status'       => $roomType->status,
                     'images'       => $roomType->images->map(fn($img) => [
                         'id' => $img->id,
-                        'image_url' => $img->image_url, // Gửi về URL gốc để FE dễ xử lý
-                        'url' => asset('storage/' . $img->image_url)
+                        'image_url' => asset('storage/' . $img->image_url)
                     ])
                 ]
             ], 200);
